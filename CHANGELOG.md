@@ -71,3 +71,11 @@
 - T-008：新增 `src/cli/eval.py`、`src/store/dao.py` 的 `upsert_run`。`run_id` 只由配置指纹决定（不含日期），产物落 `data/runs/<run_id>/attempt-N/{metrics.json,timing.json,meta.json}`；`attempt-N/meta.json` 记 `weights_sha256`（读 `index-meta.json`）、`deps_sha256`、`config_string` 等，`run_id` 规范串与 `runs` 表结构均未改。实测两次运行 `run_id` 不变、两份 `metrics.json` 逐字节一致（544 字节 / `a83df586…`），`metrics.json` 内注明单 gold 下 Recall@k 与 HitRate@k 同值。
 - T-009 全链路排查：`compileall` → `ingest`（2 篇 / 34 chunk）→ `build_index`（34 向量 / 71,459 字节）→ `eval`×2（`run_id` 不变，attempt-1~4 同哈希）→ `fill_anchors --check`（30 条逐字一致），全部退出码 0；DoD 六项逐条成立。
 - `12-release-checklist.md` 勾选 v0.1 专项 8 项与 C-06／C-07，均附实测依据。
+
+## v0.2（进行中）
+
+- T-010 全量入库：`--source full` 150 篇、`documents=150`、`chunks=2704`、失败 0、4.3 s；基准文本 1,191,197 字；同名多版本 3 组 6 篇按 `doc_id` 各占一行。
+- 修 `docx_reader._table_chars` 的去重 bug：原先用 `str(id(cell._tc))`，元素回收后地址复用导致不同单元格被误判重复，表格字符只统计到 86；改为直接以 `_tc` 元素入集合后实测 2205，与 CHG-002 项五估算一致，`chars_total` 同步由 6951 修正为 9070。
+- 全量索引重建：2704×512、体积 5,675,789 字节（5.42 MB）、编码 203 s；参考基线 `run_id=rcc22c5c40628`（30 条 confirmed）Recall@1 0.7333、Recall@5 0.9667、MRR 0.8150、nDCG@5 0.8524。
+- 按 CHG-006 回填 `02-scope.md` §2（新增 v0.2 全量实测段）与 `03-architecture.md` §5（chunk 2704 / 1,191,197 字），快照表同步。
+- 标注：新增 32 条 `candidate`（C031~C062，dev 26 / holdout 6，覆盖劳动法、医疗保障法、原子能法、反家暴法、反洗钱法、反跨境腐败法、反食品浪费法、商业银行法、商标法两版、国境卫生检疫法、国家赔偿法）；`fill_anchors.py` 增 `--fill-empty`，只填新增空值并回填空 `heading_path`，其余行仍逐字校验。

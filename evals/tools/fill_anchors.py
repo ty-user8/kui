@@ -76,9 +76,16 @@ def main() -> int:
         action="store_true",
         help="只读校验：不写 cases.csv、不重出核对表，返回码表示是否全部通过",
     )
+    parser.add_argument(
+        "--fill-empty",
+        action="store_true",
+        help="只填新增行的空 anchor_text 与空 heading_path，非空行仍按逐字校验，不一致即中止",
+    )
     args = parser.parse_args()
-    if args.check and args.reset_anchor_text:
-        parser.error("--check 与 --reset-anchor-text 不能同时使用")
+    if args.check and (args.reset_anchor_text or args.fill_empty):
+        parser.error("--check 不能与写入类开关同时使用")
+    if args.reset_anchor_text and args.fill_empty:
+        parser.error("--reset-anchor-text 与 --fill-empty 不能同时使用")
 
     try:
         conf = load()
@@ -129,16 +136,23 @@ def main() -> int:
             failures.append((case_id, "右边界不在段落终点"))
             continue
 
-        anchor_text = segment if args.reset_anchor_text else (row.get("anchor_text") or "")
+        existing = row.get("anchor_text") or ""
+        if args.reset_anchor_text or (args.fill_empty and not existing):
+            anchor_text = segment
+        else:
+            anchor_text = existing
         if anchor_text != segment:
             failures.append(
                 (case_id, "回切与 anchor_text 不一致（回切 %d 字 / 文本 %d 字）" % (len(segment), len(anchor_text)))
             )
             continue
 
+        meta = next(p for p in structure.paragraphs if p.start == start)
         row["char_start"] = str(start)
         row["char_end"] = str(end)
         row["anchor_text"] = anchor_text
+        if not (row.get("heading_path") or "").strip():
+            row["heading_path"] = meta.heading_path
         row["note"] = "整段 %d 字；逐字校验一致" % len(segment)
 
     if failures:
@@ -154,7 +168,9 @@ def main() -> int:
     write_cases(fieldnames, rows)
     write_review(rows, {row["doc_id"]: manifest[row["doc_id"]]["title"] for row in rows})
     print("回填 %d / %d 条，逐字校验通过" % (len(rows), len(rows)))
-    print("模式: %s" % ("重置 anchor_text 为整段" if args.reset_anchor_text else "只填区间并校验既有 anchor_text"))
+    mode = "重置 anchor_text 为整段" if args.reset_anchor_text else (
+        "只填新增行的空 anchor_text，其余逐字校验" if args.fill_empty else "只填区间并校验既有 anchor_text")
+    print("模式: %s" % mode)
     print("核对表: %s" % REVIEW.relative_to(PROJECT_ROOT))
     return verify_written()
 

@@ -4,11 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：`src/cli/eval.py`、`src/store/dao.py`（`upsert_run`）、`specs/12-release-checklist.md`、`PROGRESS.md`、`CHANGELOG.md`——`eval` 入口与 `run_id`／attempt 落盘、全链路排查、检查单勾选。
-- 实测：`compileall` 0；`ingest` 0（2 篇 / 34 chunk）；`build_index` 0（34 向量 / 71,459 字节）；`eval` ×4（attempt-1~4 逐字节一致，均 544 字节 / sha `a83df586…`，`run_id=r98aa795a93cf`）；`fill_anchors.py --check` 0（30 条逐字一致）；DoD 六项逐条成立，指标 0.7667／0.8333／0.9667／0.8317／0.8647／0.9667。
-- 待确认：v0.1 仓库无远端——需提供推送地址（本地已提交 `a9ee1af`，`dev` 分支已建，main 未 push）。
-
-自检脚本（`compileall`、`fill_anchors.py --check`、`src.eval.runner`）由开发方自己跑，输出贴进「实测」。状态、哈希、变更流转写 `PROGRESS.md` / `CHANGELOG.md`，不在对话里复述。
+- 改动：`src/parse/docx_reader.py` 修表格计数 bug；`src/cli/ingest.py --source full` 全量入库；`specs/02-scope.md`／`03-architecture.md` 回填 v0.2 实测；`evals/cases.csv` 加 32 条 candidate；`fill_anchors.py` 增 `--fill-empty`。
+- 实测：`ingest` 0（150 篇 / 2704 chunk / 失败 0 / 4.3 s）；表格文档 `excluded_chars` 86→2205、`chars_total` 6951→9070；`build_index` 0（2704×512、5,675,789 字节、203 s）；`eval` 0（`run_id=rcc22c5c40628`，Recall@1 0.7333／@5 0.9667、MRR 0.8150、nDCG@5 0.8524）；`fill_anchors --fill-empty` 0（62/62 逐字一致，30 confirmed + 32 candidate）。
+- 待确认：32 条 candidate 待人工逐条确认（C031~C062）；剩余 38 条 query 下一轮起草，100 条未全 confirmed 不进 T-015。
 
 ## 核验方写（每轮）
 
@@ -25,20 +23,20 @@
 
 ## 当前状态（开发方维护，每轮更新）
 
-- 版本：v0.1；T-001~T-009 全部完成，DoD 六项逐条成立，等 push 决策
+- 版本：v0.2 进行中；v0.1 已推送（`origin/dev`），T-010 完成
 - 门禁：G1/G2/G3 通过；CHG-001~006 已确认，001/002/003 状态行为「规格层已落地 + 剩余执行清单」
 - 权重：`.cache/models/bge-small-zh-v1.5`，指纹写入 `data/index/index-meta.json` 的 `weights_sha256`
-- 索引：34 条 512 维、71,459 字节；30 条 gold 全映射、`unmapped=0`；`run_id=r98aa795a93cf`，attempt-1~4 的 `metrics.json` 同哈希
-- 指标：Recall@1/3/5 = 0.7667/0.8333/0.9667，MRR 0.8317，nDCG@5 0.8647，HitRate@5 0.9667
-- 案例：BC-001 = C015 未进 top-5（失败）；BC-002 = C010 命中 rank 1 但 chunk 混装（现象，v0.3 处理）
-- 规模：02-scope 已改实测值（基准文本 14925 字 / 34 chunk / 基线 14.7%），全量估算待 T-010 回填
-- 检查单：`12-release-checklist.md` v0.1 专项 8 项 + C-06/C-07 已勾选
+- 索引：全量 2704 条 512 维、5,675,789 字节（v0.1 的 34 条已重建覆盖）
+- 指标（全量语料、30 条 confirmed 参考值）：Recall@1 0.7333／@3 0.8333／@5 0.9667，MRR 0.8150，nDCG@5 0.8524，`run_id=rcc22c5c40628`
+- 案例：BC-001 = C015（失败）；BC-002 = C010（现象）；全量语料后 C015 现象待复测
+- 规模：已回填实测——v0.1 14925 字/34 chunk；v0.2 150 篇/2704 chunk/1,191,197 字/索引 5.42 MB
+- 检查单：`12-release-checklist.md` v0.1 专项 8 项 + C-06/C-07 已勾选；v0.2 段待补
 - 仓库：`git init -b main`，提交 `a9ee1af`；`dev` 已建并推送
 - 远端：`origin` = `https://github.com/ty-user8/kui.git`；已推送 `origin/dev`（v0.1 内容提交 `a9ee1af`，其后为记录类提交；远端仅此一个分支，记录类提交会让头部前移，远端实际头部以 `git log origin/dev` 为准），`main` 未 push、未 force
 
 ## 待确认（开发方写）
 
-- v0.1 已推送完毕（`origin/dev`）；下一步是否开 v0.2（T-010 全量语料 + 70 条新标注）
+- 32 条 candidate 待人工确认；100 条未全 confirmed 不进 T-015；基线替换会另出变更单
 
 ## 结论（核验方写）
 

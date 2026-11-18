@@ -106,16 +106,20 @@ def _count_non_text(body) -> int:
 
 
 def _table_chars(document: docx.document.Document) -> tuple[int, int]:
-    """返回（表格单元格文本长度和, 表格个数）。合并单元格由 python-docx 重复返回，按内容去重计数。"""
+    """返回（表格单元格文本长度和, 表格个数）。
+
+    合并单元格会被 python-docx 重复返回，故按底层 `w:tc` 元素去重。
+    注意：不能对 `_tc` 取 `id()` 再比较——同一循环里元素被回收后地址会复用，
+    会把不同单元格误判为重复（实测导致 2204 字符只统计到 86）。
+    """
     total = 0
     for table in document.tables:
-        seen: set[str] = set()
+        seen = set()
         for row in table.rows:
             for cell in row.cells:
-                key = str(id(cell._tc))
-                if key in seen:
+                if cell._tc in seen:
                     continue
-                seen.add(key)
+                seen.add(cell._tc)
                 total += len(cell.text)
     return total, len(document.tables)
 

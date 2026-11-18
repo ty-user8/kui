@@ -1,0 +1,31 @@
+# 依赖登记。安装须在项目 venv 内执行：.venv\Scripts\python.exe -m pip install ...
+# 安装后执行 .venv\Scripts\python.exe -m pip freeze > requirements.lock.txt，
+# 其 SHA-256 记为 runs.deps_sha256。
+#
+# 禁止 pip install -r requirements.txt：
+#   该命令会把 torch>=2.2 解析成 PyPI 上的 CUDA 版（数 GB、本机无 GPU），
+#   也会绕过下面登记的 CPU 索引。
+# torch 只能按 specs/04-tech-choice.md §3 登记的方式安装：
+#   .venv\Scripts\python.exe -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.15.0+cpu
+#   或 .venv\Scripts\python.exe -m pip install .cache\wheels\torch-2.15.0+cpu-cp313-cp313-win_amd64.whl
+
+# v0.1 核心
+python-docx>=1.2,<2.0
+numpy>=2.0,<3.0
+PyYAML>=6.0,<7.0
+pydantic>=2.0,<3.0
+torch==2.15.0+cpu
+sentence-transformers>=3.0,<4.0
+faiss-cpu>=1.8
+
+# v0.2 稀疏检索
+jieba>=0.42
+rank_bm25>=0.2
+
+# v0.4 接口层
+fastapi>=0.110
+uvicorn>=0.30
+
+# v0.5 演示与生成
+streamlit>=1.35
+openai>=1.0

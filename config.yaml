@@ -1,0 +1,81 @@
+# 运行参数。密钥只从环境变量读取，本文件不含任何凭据。
+# 切分、top_k、融合权重、rerank 候选数在实验结论落定前属实验变量，可通过 configs/ 覆盖。
+
+corpus:
+  docs_dir: corpus/docs
+  manifest: corpus/metadata/manifest.json
+  v01_subset:
+    - 中华人民共和国专利法_20201017_ff808081.docx
+    - 专利代理条例_20181106_ff808081.docx
+  full:
+    dir: corpus/docs
+
+ingest:
+  max_file_mb: 20
+  max_unpacked_mb: 100
+  max_failure_rate: 0.10
+
+db:
+  path_env: RAG_DB_PATH
+  migrations_dir: specs/06-schemas/migrations
+
+paths:
+  data_dir: data
+  index_dir: data/index
+  runs_dir: data/runs
+  trace_file: data/trace.jsonl
+  pdf_refs_dir: data/pdf-refs
+
+model:
+  embedding_name: BAAI/bge-small-zh-v1.5
+  embedding_dim: 512
+  embedding_revision: main
+  batch_size: 16
+  device: cpu
+  cache_env: HF_HOME
+  rerank_name: BAAI/bge-reranker-base
+
+split:
+  strategy: fixed
+  chunk_size: 512
+  overlap: 64
+
+retrieval:
+  top_k: 5
+  candidate_k: 20
+  rrf_k: 60
+  rerank_top_n: 20
+  rerank_timeout_ms: 3000
+  use_bm25: false
+  use_rerank: false
+
+eval:
+  cases_file: evals/cases.csv
+  bootstrap_rounds: 1000
+  metrics:
+    - recall@1
+    - recall@3
+    - recall@5
+    - mrr
+    - ndcg@5
+    - hitrate@5
+
+run:
+  seed: 20261116
+  normalizer_version: 0
+
+server:
+  api_host: 127.0.0.1
+  api_port: 8000
+  ui_port: 8501
+
+llm:
+  api_key_env: RAG_LLM_API_KEY
+  base_url_env: RAG_LLM_BASE_URL
+  model_env: RAG_LLM_MODEL
+  timeout_seconds: 30
+  max_calls: 50
+
+logging:
+  level: INFO
+  excerpt_max_chars: 80

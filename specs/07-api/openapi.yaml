@@ -1,0 +1,343 @@
+openapi: 3.0.3
+info:
+  title: RAG 检索与评测接口
+  version: "0.4"
+servers:
+  - url: http://127.0.0.1:8000
+paths:
+  /search:
+    post:
+      summary: 检索 top-k，返回锚点与分数
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SearchRequest"
+      responses:
+        "200":
+          description: 检索结果；无结果时 results 为空且 reason=NO_MATCH
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /eval:
+    post:
+      summary: 跑评测集并返回指标
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                split:
+                  type: string
+                  enum: [all, dev, holdout]
+                  default: all
+      responses:
+        "200":
+          description: 指标对象
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvalResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /ingest:
+    post:
+      summary: 入库文档集
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IngestRequest"
+      responses:
+        "200":
+          description: 条目级入库结果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/TooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedFormat"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+  /trace:
+    get:
+      summary: 按 run_id 与 case_id 取 trace 摘要
+      parameters:
+        - name: run_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: case_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 50
+      responses:
+        "200":
+          description: trace 条目列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TraceItem"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /ask:
+    post:
+      summary: 检索并生成答案，附引用校验（v0.5）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+                  minLength: 1
+                top_k:
+                  type: integer
+                  minimum: 1
+                  maximum: 50
+                  default: 5
+      responses:
+        "200":
+          description: 答案与检索结果；超时或引用越界通过 reason 标记
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AskResponse"
+        "500":
+          $ref: "#/components/responses/ServerError"
+components:
+  schemas:
+    SearchRequest:
+      type: object
+      required: [query]
+      properties:
+        query:
+          type: string
+          minLength: 1
+        top_k:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 5
+        filters:
+          type: object
+          properties:
+            category:
+              type: string
+            publish_date_from:
+              type: string
+              format: date
+            publish_date_to:
+              type: string
+              format: date
+    SearchResult:
+      type: object
+      required: [chunk_id, doc_id, char_start, char_end, score, path]
+      properties:
+        chunk_id:
+          type: string
+        doc_id:
+          type: string
+        article_no:
+          type: string
+          nullable: true
+        heading_path:
+          type: string
+          nullable: true
+        char_start:
+          type: integer
+        char_end:
+          type: integer
+        score:
+          type: number
+          description: 归一化内积（余弦）原值，-1~1
+        path:
+          type: string
+          enum: [dense, bm25, fused, rerank]
+    SearchResponse:
+      type: object
+      required: [run_id, results]
+      properties:
+        run_id:
+          type: string
+        reason:
+          type: string
+          nullable: true
+          enum: [null, NO_MATCH, FALLBACK_BM25, FILTER_RELAXED]
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchResult"
+    EvalResponse:
+      type: object
+      required: [run_id, metrics]
+      properties:
+        run_id:
+          type: string
+        metrics:
+          type: object
+          additionalProperties:
+            type: number
+        unmapped:
+          type: integer
+        unconfirmed:
+          type: integer
+        case_count:
+          type: integer
+    IngestRequest:
+      type: object
+      required: [source]
+      properties:
+        source:
+          type: string
+          enum: [v01_subset, full]
+        doc_ids:
+          type: array
+          items:
+            type: string
+    IngestResponse:
+      type: object
+      required: [run_id, documents, chunks]
+      properties:
+        run_id:
+          type: string
+        documents:
+          type: integer
+        chunks:
+          type: integer
+        skipped:
+          type: integer
+        failed:
+          type: array
+          items:
+            type: object
+            properties:
+              file_name:
+                type: string
+              reason:
+                type: string
+    TraceItem:
+      type: object
+      properties:
+        case_id:
+          type: string
+          nullable: true
+        query_raw:
+          type: string
+        query_norm:
+          type: string
+          nullable: true
+        hit_chunk_id:
+          type: string
+          nullable: true
+        hit_rank:
+          type: integer
+          nullable: true
+        excerpt:
+          type: string
+          maxLength: 80
+        latency_json:
+          type: string
+    AskResponse:
+      type: object
+      required: [answer, citations, citation_valid]
+      properties:
+        answer:
+          type: string
+        citations:
+          type: array
+          items:
+            type: string
+        citation_valid:
+          type: boolean
+        retrieval:
+          $ref: "#/components/schemas/SearchResponse"
+        reason:
+          type: string
+          nullable: true
+          enum: [null, ASK_TIMEOUT, CITATION_INVALID]
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        detail:
+          type: object
+          additionalProperties: true
+  responses:
+    BadRequest:
+      description: 请求不合法
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Conflict:
+      description: 状态冲突（如索引未建立）
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    TooLarge:
+      description: 输入过大
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    UnsupportedFormat:
+      description: 格式不支持
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unprocessable:
+      description: 解析失败或失败率超限
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    ServerError:
+      description: 服务端错误
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"

@@ -139,8 +139,18 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 2. 确认后继续 T-005（固定长度切分 + 入库），再 T-006 起用 embedding。
 3. v0.1 全部任务完成 + 全链路排查 + 用户确认后才按 push 规则执行；本批不构成小版本，不 push。
 
+## 仓库与发布
+
+| 项 | 值 |
+| --- | --- |
+| 初始化 | `git init -b main`；提交 `a9ee1afce1f9696581e7051cca11103676fad46e`（v0.1 全量） |
+| 分支 | `dev` 已建并处于其上；`main` 未 push |
+| 忽略 | `.gitignore` 排除 `.venv/`、`.cache/`、`data/`（`git check-ignore` 逐条确认） |
+| 密钥 | 全工作区扫描 `sk-`／私钥头／`api_key=`／`password=` 无命中，无 `.env` 类文件 |
+| 待提交文件 | 221 |
+| 远端 | **未配置**，push 未完成 |
+
 ## 待确认
 
-- **push 决策**：v0.1 九项任务与 DoD 六项均已完成，是否 push（本批迄今未 push，也没建 git 仓）。
+- **推送地址**：仓库无远端（`git remote -v` 为空，环境无 git 托管凭据），需提供 Gitee 仓库 URL；收到后只 push `dev`、不 push `main`、不 force push，并把远端分支名补进本节与 `HANDOFF.md`。
 - 其余非阻塞事项：`CHG-001/002/003` 仍为「已确认」并附剩余执行清单（随 v0.2/v0.4 落地后转已完成）；`02-scope.md` 全量规模数字待 T-010 回填。
-- `CHG-001/002/003` 保持「已确认」，剩余执行清单见各单末节；`CHG-004/005` 已完成。

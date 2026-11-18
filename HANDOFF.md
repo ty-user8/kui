@@ -5,8 +5,8 @@
 ## 开发方写（每轮三行）
 
 - 改动：`src/cli/eval.py`、`src/store/dao.py`（`upsert_run`）、`specs/12-release-checklist.md`、`PROGRESS.md`、`CHANGELOG.md`——`eval` 入口与 `run_id`／attempt 落盘、全链路排查、检查单勾选。
-- 实测：`compileall` 0；`ingest` 0（2 篇 / 34 chunk）；`build_index` 0（34 向量 / 71,459 字节）；`eval` ×2 均 0（`run_id=r98aa795a93cf`，attempt-1~4 的 `metrics.json` 均 544 字节 / sha `a83df586…`）；`fill_anchors.py --check` 0（30 条逐字一致）；DoD 六项逐条成立，指标 0.7667／0.8333／0.9667／0.8317／0.8647／0.9667。
-- 待确认：v0.1 是否 push（九项任务与 DoD 六项已完成，迄今未建 git 仓、未 push）。
+- 实测：`compileall` 0；`ingest` 0（2 篇 / 34 chunk）；`build_index` 0（34 向量 / 71,459 字节）；`eval` ×4（attempt-1~4 逐字节一致，均 544 字节 / sha `a83df586…`，`run_id=r98aa795a93cf`）；`fill_anchors.py --check` 0（30 条逐字一致）；DoD 六项逐条成立，指标 0.7667／0.8333／0.9667／0.8317／0.8647／0.9667。
+- 待确认：v0.1 仓库无远端——需提供推送地址（本地已提交 `a9ee1af`，`dev` 分支已建，main 未 push）。
 
 自检脚本（`compileall`、`fill_anchors.py --check`、`src.eval.runner`）由开发方自己跑，输出贴进「实测」。状态、哈希、变更流转写 `PROGRESS.md` / `CHANGELOG.md`，不在对话里复述。
 
@@ -33,11 +33,12 @@
 - 案例：BC-001 = C015 未进 top-5（失败）；BC-002 = C010 命中 rank 1 但 chunk 混装（现象，v0.3 处理）
 - 规模：02-scope 已改实测值（基准文本 14925 字 / 34 chunk / 基线 14.7%），全量估算待 T-010 回填
 - 检查单：`12-release-checklist.md` v0.1 专项 8 项 + C-06/C-07 已勾选
-- push：本批不 push，未建 git 仓
+- 仓库：`git init -b main`，提交 `a9ee1af`；分支 `dev` 已建并在其上；**无远端，未 push**；`.gitignore` 已排除 `.venv/`、`.cache/`、`data/`，密钥扫描无命中
+- push：未完成，卡在远端地址
 
 ## 待确认（开发方写）
 
-- v0.1 是否 push（附 `eval` 输出与检查单，等确认后才按 push 规则执行）
+- 请给推送地址（Gitee 仓库 URL）；收到后只 push `dev`、不 push `main`、不 force
 
 ## 结论（核验方写）
 

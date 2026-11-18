@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-v0.2 进行中（2026-11-18）。T-010 完成：150 篇 / 2704 chunk / 全量索引 5.42 MB，规模已按 CHG-006 回填。标注进度 62/100（30 confirmed + 32 candidate，待人工确认 32 条）。**98 条未齐不得进 T-015 指标**。
+v0.2 进行中（2026-11-18）。T-010 完成：150 篇 / 2704 chunk / 全量索引 5.42 MB，规模已按 CHG-006 回填。标注已起草齐 100 条（30 `confirmed` + 70 `candidate`，覆盖 36 篇文档，dev 80 / holdout 20）。**70 条待人工确认，未全 `confirmed` 前不进 T-015 指标**。
 
 ## Implement 进度
 
@@ -80,7 +80,7 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 | `specs/02-scope.md` | 9942 / `1b856b27b710ec7f` | 10588 / `a2b94c1eedc76cf7` | CHG-003：§2.2 改 attempt 目录；CHG-006：§2 改 v0.1 实测值；T-010：新增 v0.2 全量实测段（150 篇 / 2704 chunk / 1,191,197 字） |
 | `specs/03-architecture.md` | —（G2 阶段产出，未入 G1 快照） | 5558 / `c39cc1d12a2cffed` | CHG-006：§5 chunk 数改实测；T-010：回填全量 2704 / 1,191,197 字 |
 | `specs/tasks.md` | —（G3 阶段产出） | 8010 / `e0b8673d2316b06b` | CHG-006：T-010 DoD 降为参考；T-006 DoD 增索引体积回填与权重指纹 |
-| `evals/cases.csv` | 9687 / `01e558389a817d9b` | 26326 / `f48b0caf9e2720c4`（v0.2 标注进行中，还会变） | T-004 回填区间与整段文本；用户本人把 30 条 `anchor_status` 改为 `confirmed`。中间态：12004 / `18a09fdaa4d6f326`（首句版，作废）、12303 / `fe2b8eb8d86e8fe7`（已回填未确认） |
+| `evals/cases.csv` | 9687 / `01e558389a817d9b` | 44530 / `5829cd74ed3f90cb`（100 条已起草；70 条待人工确认，确认后仍会变） | T-004 回填区间与整段文本；用户本人把 30 条 `anchor_status` 改为 `confirmed`。中间态：12004 / `18a09fdaa4d6f326`（首句版，作废）、12303 / `fe2b8eb8d86e8fe7`（已回填未确认） |
 | `evals/rubric.md` | 1084 / `92d874d9ff3659c1` | 同左（未改） | — |
 
 `01-requirements.md` 与 `02-scope.md` 在此后如需改动，一律走变更单并在 `CHANGELOG-DECISIONS.md` 记因。

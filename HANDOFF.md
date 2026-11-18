@@ -4,9 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：`src/parse/docx_reader.py` 修表格计数 bug；`src/cli/ingest.py --source full` 全量入库；`specs/02-scope.md`／`03-architecture.md` 回填 v0.2 实测；`evals/cases.csv` 加 32 条 candidate；`fill_anchors.py` 增 `--fill-empty`。
-- 实测：`ingest` 0（150 篇 / 2704 chunk / 失败 0 / 4.3 s）；表格文档 `excluded_chars` 86→2205、`chars_total` 6951→9070；`build_index` 0（2704×512、5,675,789 字节、203 s）；`eval` 0（`run_id=rcc22c5c40628`，Recall@1 0.7333／@5 0.9667、MRR 0.8150、nDCG@5 0.8524）；`fill_anchors --fill-empty` 0（62/62 逐字一致，30 confirmed + 32 candidate）。
-- 待确认：32 条 candidate 待人工逐条确认（C031~C062）；剩余 38 条 query 下一轮起草，100 条未全 confirmed 不进 T-015。
+- 改动：`evals/cases.csv` 补 38 条 candidate（C063~C100，凑齐 100 条）；`evals/tools/fill_anchors.py` 的核对表说明参数化；`evals/anchor-review.md` 重出 100 行；`CHG-002` 项二标为起草完成。
+- 实测：`fill_anchors --fill-empty` 0（回填 100/100 逐字一致）；`--check` 0；`cases.csv` 100 条 = 30 `confirmed` + 70 `candidate`，dev 80 / holdout 20，覆盖 36 篇文档，空区间 0，44,530 字节 / `5829cd74ed3f90cb`；核对表 100 行。
+- 待确认：70 条 candidate（C031~C100）待你逐条确认并自行改 `confirmed`；未全 confirmed 不进 T-015。
 
 ## 核验方写（每轮）
 
@@ -28,7 +28,7 @@
 - 权重：`.cache/models/bge-small-zh-v1.5`，指纹写入 `data/index/index-meta.json` 的 `weights_sha256`
 - 索引：全量 2704 条 512 维、5,675,789 字节（v0.1 的 34 条已重建覆盖）
 - 指标（全量语料、30 条 confirmed 参考值）：Recall@1 0.7333／@3 0.8333／@5 0.9667，MRR 0.8150，nDCG@5 0.8524，`run_id=rcc22c5c40628`
-- 案例：BC-001 = C015（失败）；BC-002 = C010（现象）；全量语料后 C015 现象待复测
+- 案例：BC-001 = C015（失败）；BC-002 = C010（现象）；全量语料后待复测
 - 规模：已回填实测——v0.1 14925 字/34 chunk；v0.2 150 篇/2704 chunk/1,191,197 字/索引 5.42 MB
 - 检查单：`12-release-checklist.md` v0.1 专项 8 项 + C-06/C-07 已勾选；v0.2 段待补
 - 仓库：`git init -b main`，提交 `a9ee1af`；`dev` 已建并推送
@@ -36,7 +36,7 @@
 
 ## 待确认（开发方写）
 
-- 32 条 candidate 待人工确认；100 条未全 confirmed 不进 T-015；基线替换会另出变更单
+- 70 条 candidate 待人工确认（C031~C100）；未全 confirmed 不进 T-015；基线替换会另出变更单
 
 ## 结论（核验方写）
 

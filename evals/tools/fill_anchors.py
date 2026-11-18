@@ -36,6 +36,7 @@ from src.parse.docx_reader import EntryError, check_entry, read_docx  # noqa: E4
 CASES = PROJECT_ROOT / "evals" / "cases.csv"
 REVIEW = PROJECT_ROOT / "evals" / "anchor-review.md"
 LEAD_CHARS = 60
+TOTAL_CASES = 100
 SENTENCE_END = "。"
 
 
@@ -184,7 +185,8 @@ def write_review(rows: list[dict[str, str]], titles: dict[str, str]) -> None:
         "`anchor_status` 未改动，仍为 `candidate`。",
         "",
         "确认方式：逐条核对「条号 / 区间 / 整段文本」是否指向正确条款，确认后在 `evals/cases.csv`",
-        "把该行 `anchor_status` 改为 `confirmed`。30 条全部确认后，v0.1 DoD 第 1 项才成立。",
+        "把该行 `anchor_status` 改为 `confirmed`。当前 %d 条，最终 %d 条全部 `confirmed` 后再进 T-015 指标。"
+        % (len(rows), TOTAL_CASES),
         "",
         "| 用例 | split | 查询 | 文档 | 条号 | 章节 | 区间 | 整段文本 | 首句（前 60 字，仅供扫读） |",
         "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",

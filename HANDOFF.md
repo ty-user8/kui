@@ -34,16 +34,16 @@
 - 规模：02-scope 已改实测值（基准文本 14925 字 / 34 chunk / 基线 14.7%），全量估算待 T-010 回填
 - 检查单：`12-release-checklist.md` v0.1 专项 8 项 + C-06/C-07 已勾选
 - 仓库：`git init -b main`，提交 `a9ee1af`；`dev` 已建并推送
-- 远端：`origin` = `https://github.com/ty-user8/kui.git`；**已推送 `origin/dev` = `587cdf9`**（远端仅此一个分支），`main` 未 push、未 force
+- 远端：`origin` = `https://github.com/ty-user8/kui.git`；已推送 `origin/dev`（v0.1 内容提交 `a9ee1af`，其后为记录类提交；远端仅此一个分支，记录类提交会让头部前移，远端实际头部以 `git log origin/dev` 为准），`main` 未 push、未 force
 
 ## 待确认（开发方写）
 
-- v0.1 已推送完毕（`origin/dev` = `587cdf9`）；下一步是否开 v0.2（T-010 全量语料 + 70 条新标注）
+- v0.1 已推送完毕（`origin/dev`）；下一步是否开 v0.2（T-010 全量语料 + 70 条新标注）
 
 ## 结论（核验方写）
 
 - 2026-11-18：T-008 放行；`attempt-N/meta.json` 增加 `weights_sha256`（从 `data/index/index-meta.json` 读），`run_id` 规范串与 `runs` 表不动。只做 T-008，不改 `corpus/**`，本批不 push。
 
-- （开发方补记 2026-11-18）v0.1 推送完成：`origin/dev` = `587cdf978a6619b54cb04d50accc0e0a13392261`，`main` 未推送。
+- （开发方补记 2026-11-18）v0.1 推送完成：`origin/dev`，v0.1 内容提交 `a9ee1afce1f9696581e7051cca11103676fad46e`，`main` 未推送；记录类提交会让头部前移，远端实际头部以 `git log origin/dev` 为准。
 
 本文件只做交接，正式决策与流水仍以 `PROGRESS.md`、`CHANGELOG.md`、`CHANGELOG-DECISIONS.md` 为准。

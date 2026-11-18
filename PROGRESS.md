@@ -149,7 +149,7 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 | 密钥 | 全工作区扫描 `sk-`／私钥头／`api_key=`／`password=` 无命中，无 `.env` 类文件 |
 | 待提交文件 | 221 |
 | 远端 | `origin` = `https://github.com/ty-user8/kui.git` |
-| 已推送 | `dev` @ `587cdf978a6619b54cb04d50accc0e0a13392261`（远端仅此一个分支） |
+| 已推送 | `dev`：v0.1 内容提交 `a9ee1afce1f9696581e7051cca11103676fad46e`，其后为记录类提交；远端仅此一个分支（记录类提交会让头部前移，远端实际头部以 `git log origin/dev` 为准） |
 | 未推送 | `main`（本地停在 `a9ee1af`，未 push、未 force） |
 
 ## 待确认

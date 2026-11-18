@@ -33,15 +33,17 @@
 - 案例：BC-001 = C015 未进 top-5（失败）；BC-002 = C010 命中 rank 1 但 chunk 混装（现象，v0.3 处理）
 - 规模：02-scope 已改实测值（基准文本 14925 字 / 34 chunk / 基线 14.7%），全量估算待 T-010 回填
 - 检查单：`12-release-checklist.md` v0.1 专项 8 项 + C-06/C-07 已勾选
-- 仓库：`git init -b main`，提交 `a9ee1af`；分支 `dev` 已建并在其上；**无远端，未 push**；`.gitignore` 已排除 `.venv/`、`.cache/`、`data/`，密钥扫描无命中
-- push：未完成，卡在远端地址
+- 仓库：`git init -b main`，提交 `a9ee1af`；`dev` 已建并推送
+- 远端：`origin` = `https://github.com/ty-user8/kui.git`；**已推送 `origin/dev` = `587cdf9`**（远端仅此一个分支），`main` 未 push、未 force
 
 ## 待确认（开发方写）
 
-- 请给推送地址（Gitee 仓库 URL）；收到后只 push `dev`、不 push `main`、不 force
+- v0.1 已推送完毕（`origin/dev` = `587cdf9`）；下一步是否开 v0.2（T-010 全量语料 + 70 条新标注）
 
 ## 结论（核验方写）
 
 - 2026-11-18：T-008 放行；`attempt-N/meta.json` 增加 `weights_sha256`（从 `data/index/index-meta.json` 读），`run_id` 规范串与 `runs` 表不动。只做 T-008，不改 `corpus/**`，本批不 push。
+
+- （开发方补记 2026-11-18）v0.1 推送完成：`origin/dev` = `587cdf978a6619b54cb04d50accc0e0a13392261`，`main` 未推送。
 
 本文件只做交接，正式决策与流水仍以 `PROGRESS.md`、`CHANGELOG.md`、`CHANGELOG-DECISIONS.md` 为准。

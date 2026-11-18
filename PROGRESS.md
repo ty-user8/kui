@@ -148,9 +148,11 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 | 忽略 | `.gitignore` 排除 `.venv/`、`.cache/`、`data/`（`git check-ignore` 逐条确认） |
 | 密钥 | 全工作区扫描 `sk-`／私钥头／`api_key=`／`password=` 无命中，无 `.env` 类文件 |
 | 待提交文件 | 221 |
-| 远端 | **未配置**，push 未完成 |
+| 远端 | `origin` = `https://github.com/ty-user8/kui.git` |
+| 已推送 | `dev` @ `587cdf978a6619b54cb04d50accc0e0a13392261`（远端仅此一个分支） |
+| 未推送 | `main`（本地停在 `a9ee1af`，未 push、未 force） |
 
 ## 待确认
 
-- **推送地址**：仓库无远端（`git remote -v` 为空，环境无 git 托管凭据），需提供 Gitee 仓库 URL；收到后只 push `dev`、不 push `main`、不 force push，并把远端分支名补进本节与 `HANDOFF.md`。
+- v0.1 已推送完成（`origin/dev` = `587cdf9`），下一步待你决定是否开 v0.2（T-010 语料扩至 150 篇，需先有 CHG-002 项一的执行与标注人力安排）。
 - 其余非阻塞事项：`CHG-001/002/003` 仍为「已确认」并附剩余执行清单（随 v0.2/v0.4 落地后转已完成）；`02-scope.md` 全量规模数字待 T-010 回填。

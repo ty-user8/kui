@@ -4,9 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：`src/trace.py` 新建（13 字段固定顺序、`excerpt` 80 码点、独立 `.lock` + 平台锁）；`tests/test_trace.py` 新建 6 例；`05-modules.md` 目录树补 `src/trace.py` 与 `test_trace.py`。
-- 实测：`.venv\Scripts\python.exe -m unittest tests.test_trace tests.test_hybrid` 0（14 例全过）；`.venv\Scripts\python.exe -m src.trace` 0（3 条 trace、13 字段、excerpt 均 80、无 `sk-`／用户目录；4 线程×25 行并发 100 行全部可解析）。
-- 待确认：无阻塞项；下一步 T-014 收尾（100 条已备齐，主要补 `anchor_status` 与用例元数据核对）／T-015 实验，未到 G4 或 push 前不打扰。
+- 改动：`src/cli/eval.py` 增 `--retriever`／`--run-suffix`；`src/eval/runner.py` 按配置选路并修重复检索；`evals/experiments-v0.2.md` 新建；`cases.csv` 改写 C083/C096 的 query；新增 `CHG-007-baseline-replacement.md`（待确认）。
+- 实测：`.venv\Scripts\python.exe -m src.cli.eval --split dev --retriever dense --run-suffix=-dev-dense` 0（R@5 0.8375、MRR 0.6121）；`... --retriever hybrid --run-suffix=-dev-hybrid` 0（0.8875、0.6948）；`... --split all --retriever hybrid` 0（100 条、`run_id=r5e4a62714526`、R@1 0.5600／@5 0.9000、MRR 0.7045、nDCG@5 0.7543）；`-m unittest` 14 例全过。
+- 待确认：**CHG-007 基线替换**（把基线从 `r98aa795a93cf` 换成 `r5e4a62714526`）——这属新变更单，停在门口等你点头。
 
 ## 核验方写（每轮）
 
@@ -23,11 +23,11 @@
 
 ## 当前状态（开发方维护，每轮更新）
 
-- 版本：v0.2 进行中；v0.1 已推送（`origin/dev`），T-010~T-013 完成
+- 版本：v0.2 任务完成（T-010~T-015）；v0.1 已推送（`origin/dev`），v0.2 未 push
 - 门禁：G1/G2/G3 通过；CHG-001~006 已确认，001/002/003 状态行为「规格层已落地 + 剩余执行清单」
 - 权重：`.cache/models/bge-small-zh-v1.5`，指纹写入 `data/index/index-meta.json` 的 `weights_sha256`
 - 索引：全量 2704 条 512 维、5,675,789 字节（v0.1 的 34 条已重建覆盖）
-- 指标（全量语料、30 条 confirmed 参考值）：Recall@1 0.7333／@3 0.8333／@5 0.9667，MRR 0.8150，nDCG@5 0.8524，`run_id=rcc22c5c40628`
+- 指标（v0.2 最终，100 条 / 融合）：R@1 0.5600／@3 0.8600／@5 0.9000、MRR 0.7045、nDCG@5 0.7543，`run_id=r5e4a62714526`（基线替换待 CHG-007）
 - 案例：BC-001 = C015（失败）；BC-002 = C010（现象）；全量语料后待复测
 - 规模：已回填实测——v0.1 14925 字/34 chunk；v0.2 150 篇/2704 chunk/1,191,197 字/索引 5.42 MB
 - 检查单：`12-release-checklist.md` v0.1 专项 8 项 + C-06/C-07 已勾选；v0.2 段待补
@@ -36,7 +36,7 @@
 
 ## 待确认（开发方写）
 
-- 标注 100/100 confirmed；T-013 完成，下一步 T-014/T-015；基线替换会另出变更单
+- 标注 100/100 confirmed；T-010~T-015 完成，基线替换待 CHG-007 确认，之后进 G4
 
 ## 结论（核验方写）
 

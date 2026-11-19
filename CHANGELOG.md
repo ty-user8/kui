@@ -78,6 +78,9 @@
 - 修 `docx_reader._table_chars` 的去重 bug：原先用 `str(id(cell._tc))`，元素回收后地址复用导致不同单元格被误判重复，表格字符只统计到 86；改为直接以 `_tc` 元素入集合后实测 2205，与 CHG-002 项五估算一致，`chars_total` 同步由 6951 修正为 9070。
 - 全量索引重建：2704×512、体积 5,675,789 字节（5.42 MB）、编码 203 s；参考基线 `run_id=rcc22c5c40628`（30 条 confirmed）Recall@1 0.7333、Recall@5 0.9667、MRR 0.8150、nDCG@5 0.8524。
 - 按 CHG-006 回填 `02-scope.md` §2（新增 v0.2 全量实测段）与 `03-architecture.md` §5（chunk 2704 / 1,191,197 字），快照表同步。
+- T-014 收尾：100 条元数据核对（id/query 无重复、编号连续、覆盖 36 篇文档）；C083、C096 的 query 与条文长重合过高，按 REQ-037 改写并留 note；`heading_path` 为空 4 条经查属条在章外，不作缺陷。
+- T-015 实验：`eval` 增 `--retriever {dense,hybrid}` 与 `--run-suffix`，`runner` 支持按配置选路并修掉每条 query 重复检索一次的问题；三组实验见 `evals/experiments-v0.2.md`，dev 选型（融合 MRR 0.6948 > 单路 0.6121），最终 `run_id=r5e4a62714526`（100 条、R@5 0.9000、MRR 0.7045）。
+- 新增 `specs/changes/CHG-007-baseline-replacement.md`（基线替换），状态待确认。
 - T-013：新增 `src/trace.py`（13 字段固定顺序、`excerpt` 80 码点、追加写用独立 `.lock` 文件加平台锁）与 `tests/test_trace.py`（6 例）；修一处并发问题：直接锁数据文件时 Windows 上并发 open 报 `PermissionError`，4 线程 100 行只落 75 行，改为独立锁文件后 100/100 完整。
 - T-012：新增 `src/retrieve/hybrid.py`（`fuse` 纯函数 + `HybridRetriever`，某一路缺失自动退化为单路）与 `tests/test_hybrid.py`（8 例单测，验证 `score = Σ 1/(k+rank)`、排序、截断、降级、同路去重、`k` 非正报错）；`05-modules.md` 目录树补 `tests/`。三条查询两路与融合均非空，前两条两路 top1 一致。
 - T-011：新增 `src/index/bm25_index.py`（jieba 分词 + `BM25Okapi`，只持久化分词结果与参数、加载时重建，避免 `python -m` 下 pickle 类路径写成 `__main__` 的跨进程加载失败）；2704 chunk、索引 5,442,894 字节；两路检索均非空，前两条查询两路 top1 一致。

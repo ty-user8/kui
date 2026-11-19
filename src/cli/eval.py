@@ -82,6 +82,17 @@ def write_json(path: pathlib.Path, payload: dict) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="跑评测并按 attempt 落盘")
     parser.add_argument("--split", choices=("all", "dev", "holdout"), default="all")
+    parser.add_argument(
+        "--retriever",
+        choices=("dense", "hybrid"),
+        default=None,
+        help="覆盖 retrieval.use_bm25：dense=只用向量，hybrid=向量+BM25 融合",
+    )
+    parser.add_argument(
+        "--run-suffix",
+        default="",
+        help="给 run_id 加后缀（如 -dev-dense），用于同一配置指纹下并列保留多组实验",
+    )
     args = parser.parse_args()
 
     try:
@@ -90,6 +101,13 @@ def main() -> int:
     except ConfigError as exc:
         print("配置错误: %s" % exc)
         return 2
+
+    if args.retriever is not None:
+        import dataclasses
+
+        conf = dataclasses.replace(
+            conf, retrieval=dataclasses.replace(conf.retrieval, use_bm25=(args.retriever == "hybrid"))
+        )
 
     started = time.time()
     cases_sha = sha256_file(conf.eval.cases_file)
@@ -104,6 +122,7 @@ def main() -> int:
         conn.close()
 
     run_id, config_hash, cfg_string = build_run_id(conf, cases_sha, corpus_sha, doc_count)
+    run_id += args.run_suffix
     result = runner.run_eval(conf, split=args.split)
 
     run_dir = conf.paths.runs_dir / run_id
@@ -120,6 +139,7 @@ def main() -> int:
         "unmapped": result["unmapped"],
         "unconfirmed": result["unconfirmed"],
         "overlap_cases": result["overlap_cases"],
+        "retriever": "hybrid" if conf.retrieval.use_bm25 else "dense",
         "metrics": metrics,
         "note": METRIC_NOTE,
     }
@@ -151,6 +171,9 @@ def main() -> int:
         "weights_sha256": index_meta.get("weights_sha256"),
         "weights_file": index_meta.get("weights_file"),
         "index_bytes": index_meta.get("total_bytes"),
+        "use_bm25": conf.retrieval.use_bm25,
+        "rrf_k": conf.retrieval.rrf_k,
+        "candidate_k": conf.retrieval.candidate_k,
     }
     write_json(attempt_dir / "meta.json", meta)
 

@@ -13,10 +13,29 @@ import sqlite3
 import time
 
 from src.eval import mapping, metrics
+from src.index import bm25_index
 from src.retrieve.dense import DenseRetriever
+from src.retrieve.hybrid import HybridRetriever
 from src.store.db import connect
 
 K_VALUES = (1, 3, 5)
+
+
+def build_retriever(conf):
+    """按 `retrieval.use_bm25` 选单路或融合；BM25 索引缺失时退回单路（REQ-024 降级）。"""
+    dense = DenseRetriever(conf)
+    if not conf.retrieval.use_bm25:
+        return dense
+    try:
+        bundle = bm25_index.load(conf.paths.index_dir)
+    except FileNotFoundError:
+        return dense
+    return HybridRetriever(
+        dense=dense,
+        bm25=bundle,
+        rrf_k=conf.retrieval.rrf_k,
+        candidate_k=conf.retrieval.candidate_k,
+    )
 
 
 def load_cases(path: pathlib.Path) -> list[dict]:
@@ -45,7 +64,7 @@ def run_eval(conf, split: str = "all", top_k: int | None = None) -> dict:
         conn.close()
 
     gold_map, unmapped = mapping.map_cases(cases, grouped)
-    retriever = DenseRetriever(conf)
+    retriever = build_retriever(conf)
     k = top_k or conf.retrieval.top_k
 
     per_case: list[dict] = []
@@ -57,7 +76,8 @@ def run_eval(conf, split: str = "all", top_k: int | None = None) -> dict:
             continue
         if len(gold) > 1:
             overlap_cases += 1
-        ranked = [chunk_id for chunk_id, _score in retriever.search(case["query"], k)]
+        hits = retriever.search(case["query"], k)
+        ranked = [chunk_id for chunk_id, _score in hits]
         rank = metrics.first_hit_rank(ranked, gold)
         per_case.append(
             {
@@ -67,7 +87,7 @@ def run_eval(conf, split: str = "all", top_k: int | None = None) -> dict:
                 "gold": gold,
                 "ranked": ranked,
                 "hit_rank": rank,
-                "top1_score": retriever.search(case["query"], 1)[0][1] if ranked else None,
+                "top1_score": hits[0][1] if hits else None,
             }
         )
 

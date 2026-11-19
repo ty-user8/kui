@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-v0.2 进行中（2026-11-18）。T-010 完成：150 篇 / 2704 chunk / 全量索引 5.42 MB，规模已按 CHG-006 回填。标注 100/100 全部 `confirmed`（覆盖 36 篇文档，dev 80 / holdout 20），可进 T-015。T-011（BM25 + jieba）在实施。
+v0.2 进行中（2026-11-18）。T-010 完成：150 篇 / 2704 chunk / 全量索引 5.42 MB，规模已按 CHG-006 回填。T-010~T-015 全部完成：150 篇 / 2704 chunk、100 条用例全 `confirmed`、两路融合、trace、三组实验。**基线替换待 `CHG-007` 确认**，之后进 G4 门禁。
 
 ## Implement 进度
 
@@ -19,6 +19,8 @@ v0.2 进行中（2026-11-18）。T-010 完成：150 篇 / 2704 chunk / 全量索
 | T-007 | `src/eval/mapping.py`、`src/eval/metrics.py`、`src/eval/runner.py`、`src/retrieve/dense.py` | 30 条全部映射成功（`unmapped=0`）、`unconfirmed=0`、多 chunk 映射 6 条（gold 起点落在 64 字符 overlap 内）；Recall@1 0.7667／@3 0.8333／@5 0.9667，MRR 0.8317，nDCG@5 0.8647，HitRate@5 0.9667；映射只按字符区间，未用 `chunks.article_no`；唯一未命中为 C015，多 chunk 命中按「任一命中即 hit、每条只计一次」 |
 | T-008 | `src/cli/eval.py`、`src/store/dao.py`（`upsert_run`） | `run_id=r98aa795a93cf` 两次运行不变；`attempt-1`／`attempt-2` 两份 `metrics.json` 逐字节一致（544 字节，sha `a83df586…`）；`meta.json` 含 `weights_sha256`（取自 `index-meta.json`）、`deps_sha256`、`config_string`、`corpus_sha256`；`runs` 表一条记录，`metrics_json` 与文件同源；`metrics.json` 内注明「单 gold 下 Recall@k 与 HitRate@k 同值」 |
 | T-010 | `config.yaml`（`--source full`）、`src/parse/docx_reader.py`（表格计数修复） | 150 篇全部入库：`documents=150`、`chunks=2704`、失败 0、耗时 4.3 s；基准文本合计 1,191,197 字；同名多版本 3 组 6 篇各占一行；表格文档 `excluded_chars=2205`（修复前 86）；全量索引 2704×512、体积 5,675,789 字节（5.42 MB）、编码 203 s；参考基线 `run_id=rcc22c5c40628`（30 条 confirmed）Recall@1 0.7333／@5 0.9667、MRR 0.8150、nDCG@5 0.8524 |
+| T-014 | `evals/cases.csv`（收尾核对） | 100 条：v0.1 30 / v0.2 70（dev 56 / holdout 14），`confirmed` 100；id 与 query 无重复、编号连续；难度分布 同义改写 40／否定 25／术语 12／列举 11／数值 10／编号敏感 1／条件 1；覆盖 36 篇文档；C083/C096 的 query 与条文长重合 12/16、8/12 字，已改写并留 note；`heading_path` 为空 4 条属条在章外（反食品浪费法 3 条、护照法 1 条） |
+| T-015 | `src/cli/eval.py`、`src/eval/runner.py`、`evals/experiments-v0.2.md` | 三组实验：dev 单路（R@5 0.8375、MRR 0.6121）vs dev 融合（0.8875、0.6948），按预定规则选融合；最终 all 100 条一次出 `run_id=r5e4a62714526`：R@1 0.5600／@3 0.8600／@5 0.9000、MRR 0.7045、nDCG@5 0.7543；holdout 只在最终组出现一次；基线替换提请 `CHG-007`（待确认） |
 | T-013 | `src/trace.py`、`tests/test_trace.py` | 13 个字段齐全（`run_id`~`flags`）；`excerpt` 恒为 80 码点、换行折空格；追加写用独立 `.lock` 文件 + 平台锁（POSIX `flock`／Windows `msvcrt.locking`），4 线程×25 行并发写 100 行全部可解析；自检 3 条 trace 无 `sk-` 与用户目录；单测 6 例通过 |
 | T-012 | `src/retrieve/hybrid.py`、`tests/test_hybrid.py`、`tests/__init__.py` | RRF 融合 `score = Σ 1/(k+rank)`；单测 8 例全过（单路、双路求和、排序、截断、单路缺失、双路空、同路重复、k 非正）；三条查询两路与融合均非空，前两条两路 top1 一致（`00012`／`00002`），融合 top1 分数 0.03279（两路均第 1） |
 | T-011 | `src/index/bm25_index.py` | 2704 chunk 建 BM25，体积 5,442,894 字节（存分词结果 + 参数，加载时重建 `BM25Okapi`）；jieba 分词正确（「发明专利权的期限是几年」→ 发明/专利权/的/期限/是/几年）；三条查询 BM25 与向量两路均返回非空，前两条两路 top1 一致（`00012`／`00002`）；建索引 4.4 s |
@@ -83,7 +85,7 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 | `specs/02-scope.md` | 9942 / `1b856b27b710ec7f` | 10588 / `a2b94c1eedc76cf7` | CHG-003：§2.2 改 attempt 目录；CHG-006：§2 改 v0.1 实测值；T-010：新增 v0.2 全量实测段（150 篇 / 2704 chunk / 1,191,197 字） |
 | `specs/03-architecture.md` | —（G2 阶段产出，未入 G1 快照） | 5558 / `c39cc1d12a2cffed` | CHG-006：§5 chunk 数改实测；T-010：回填全量 2704 / 1,191,197 字 |
 | `specs/tasks.md` | —（G3 阶段产出） | 8010 / `e0b8673d2316b06b` | CHG-006：T-010 DoD 降为参考；T-006 DoD 增索引体积回填与权重指纹 |
-| `evals/cases.csv` | 9687 / `01e558389a817d9b` | 44530 / `9c8a51c764ffb166`（100 条全部 `confirmed`） | T-004 回填区间与整段文本；用户本人把 30 条 `anchor_status` 改为 `confirmed`。中间态：12004 / `18a09fdaa4d6f326`（首句版，作废）、12303 / `fe2b8eb8d86e8fe7`（已回填未确认） |
+| `evals/cases.csv` | 9687 / `01e558389a817d9b` | 44683 / `7ed4618cd3b74d3d`（100 条全部 `confirmed`；C083/C096 的 query 按 REQ-037 改写） | T-004 回填区间与整段文本；用户本人把 30 条 `anchor_status` 改为 `confirmed`。中间态：12004 / `18a09fdaa4d6f326`（首句版，作废）、12303 / `fe2b8eb8d86e8fe7`（已回填未确认） |
 | `evals/rubric.md` | 1084 / `92d874d9ff3659c1` | 同左（未改） | — |
 
 `01-requirements.md` 与 `02-scope.md` 在此后如需改动，一律走变更单并在 `CHANGELOG-DECISIONS.md` 记因。

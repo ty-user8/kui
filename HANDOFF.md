@@ -4,9 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：`PROGRESS.md` 新增「当前基线」（`r5e4a62714526`）与「G4 就绪材料」两段；`12-release-checklist.md` 补 v0.2 专项 9 项、通用项勾选 8 项；`evals/experiments-v0.2.md` D 行 holdout 数订正为 20；`CHG-007` 转已完成。
-- 实测：`.venv\Scripts\python.exe -m src.cli.eval --split dev --retriever hybrid --run-suffix=-dev-hybrid` 第二次 attempt-2 → 与 attempt-1 `metrics.json` 逐字节一致（复现，未碰 holdout）；`-m unittest` 14 例通过；附录 C 关键词扫描 `src/`、`scripts/` 零命中；C-01 技术方案 29920 / `76b18223…` 未变、manifest 150 条与实体一致。
-- 待确认：**G4 门禁**（材料清单见 `PROGRESS.md`「G4 就绪材料」）；C-09（默认账号表）待 v0.5 README。
+- 改动：`PROGRESS.md` 写推送记录（`origin/dev` = `3ec9f67`、积压 0）、`cases.csv` 快照更新为 44715 / `7f94fe58a3c8e8d7`、当前阶段标 v0.2 已发布；`HANDOFF.md` 同步当前状态。
+- 实测：`git ls-remote --heads origin` 仅 `refs/heads/dev` = `3ec9f672…`；`origin/dev..dev` 积压 0；工作区干净；`fill_anchors --check` 0（100 条逐字一致）。
+- 待确认：本轮收尾提交**未推**，是否再推 `dev` 等你点头；之后按你指示直接进 v0.3 T-016。
 
 ## 核验方写（每轮）
 
@@ -23,7 +23,7 @@
 
 ## 当前状态（开发方维护，每轮更新）
 
-- 版本：v0.2 完成待 G4；v0.1 已推送（`origin/dev`），v0.2 未 push（dev 积压提交待 G4 后推）
+- 版本：v0.2 已发布（G4 过门、`origin/dev` = `3ec9f67`）；下一步 v0.3 从 T-016 起
 - 门禁：G1/G2/G3 通过；CHG-001~006 已确认，001/002/003 状态行为「规格层已落地 + 剩余执行清单」
 - 权重：`.cache/models/bge-small-zh-v1.5`，指纹写入 `data/index/index-meta.json` 的 `weights_sha256`
 - 索引：全量 2704 条 512 维、5,675,789 字节（v0.1 的 34 条已重建覆盖）
@@ -36,7 +36,7 @@
 
 ## 待确认（开发方写）
 
-- 基线 `r5e4a62714526`（CHG-007 已确认）；v0.2 任务完成，停在 G4 门禁
+- 基线 `r5e4a62714526`（CHG-007）；v0.2 完成并推送，积压 0
 
 ## 结论（核验方写）
 

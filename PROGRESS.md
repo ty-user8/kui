@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-v0.2 任务（T-010~T-015）与基线替换全部完成：150 篇 / 2704 chunk、100 条用例全 `confirmed`、两路融合、trace、三组实验；`CHG-007` 已确认，基线为 `r5e4a62714526`。**当前停在 G4 门禁**，材料见「G4 就绪材料」，确认后按 v0.2 push 规则执行。。
+**v0.2 已完成并发布**（2026-11-19）：G4 过门，`origin/dev` = `3ec9f67`，积压 0；基线 `r5e4a62714526`（150 篇 / 2704 chunk / 100 条 / 融合，R@5 0.9000）。下一次迭代 v0.3 从 T-016 起。。
 
 ## Implement 进度
 
@@ -108,7 +108,7 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 | `specs/02-scope.md` | 9942 / `1b856b27b710ec7f` | 10588 / `a2b94c1eedc76cf7` | CHG-003：§2.2 改 attempt 目录；CHG-006：§2 改 v0.1 实测值；T-010：新增 v0.2 全量实测段（150 篇 / 2704 chunk / 1,191,197 字） |
 | `specs/03-architecture.md` | —（G2 阶段产出，未入 G1 快照） | 5558 / `c39cc1d12a2cffed` | CHG-006：§5 chunk 数改实测；T-010：回填全量 2704 / 1,191,197 字 |
 | `specs/tasks.md` | —（G3 阶段产出） | 8010 / `e0b8673d2316b06b` | CHG-006：T-010 DoD 降为参考；T-006 DoD 增索引体积回填与权重指纹 |
-| `evals/cases.csv` | 9687 / `01e558389a817d9b` | 44683 / `7ed4618cd3b74d3d`（100 条全部 `confirmed`；C083/C096 的 query 按 REQ-037 改写） | T-004 回填区间与整段文本；用户本人把 30 条 `anchor_status` 改为 `confirmed`。中间态：12004 / `18a09fdaa4d6f326`（首句版，作废）、12303 / `fe2b8eb8d86e8fe7`（已回填未确认） |
+| `evals/cases.csv` | 9687 / `01e558389a817d9b` | 44715 / `7f94fe58a3c8e8d7`（100 条全部 `confirmed`；C083/C096 的 query 改写已由用户复核 2026-11-19） | T-004 回填区间与整段文本；v0.2 新增 70 条；CHG-007 后基线用例集 |
 | `evals/rubric.md` | 1084 / `92d874d9ff3659c1` | 同左（未改） | — |
 
 `01-requirements.md` 与 `02-scope.md` 在此后如需改动，一律走变更单并在 `CHANGELOG-DECISIONS.md` 记因。
@@ -178,8 +178,9 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 | 密钥 | 全工作区扫描 `sk-`／私钥头／`api_key=`／`password=` 无命中，无 `.env` 类文件 |
 | 待提交文件 | 221 |
 | 远端 | `origin` = `https://github.com/ty-user8/kui.git` |
-| 已推送 | `dev`：v0.1 内容提交 `a9ee1afce1f9696581e7051cca11103676fad46e`，其后为记录类提交；远端仅此一个分支（记录类提交会让头部前移，远端实际头部以 `git log origin/dev` 为准） |
+| 已推送 | `origin/dev` = `3ec9f67239ffda81f2b78b02d2d2c44fc30cb378`（v0.2 完成点），积压 0；远端仅此一个分支 |
 | 未推送 | `main`（本地停在 `a9ee1af`，未 push、未 force） |
+| 推送记录 | v0.1：`e2357e0`（首个 dev 推送）；v0.2：`587cdf9` → `3c43f78` → `e2357e0`(前) → `3ec9f67`，均只推 `dev` |
 
 ## 待确认
 

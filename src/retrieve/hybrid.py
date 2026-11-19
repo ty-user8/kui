@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from src.index import bm25_index
 from src.retrieve.dense import DenseRetriever
@@ -43,15 +43,23 @@ class HybridRetriever:
     bm25: bm25_index.BM25Bundle | None
     rrf_k: int = DEFAULT_RRF_K
     candidate_k: int = 20
+    last_flags: list[str] = field(default_factory=list)
 
     @property
     def ready(self) -> bool:
         return self.dense.ready or (self.bm25 is not None and self.bm25.ntotal > 0)
 
     def search(self, query: str, top_k: int = 5) -> list[tuple[str, float]]:
+        self.last_flags = []
         rankings: list[list[str]] = []
         if self.dense.ready:
-            rankings.append([chunk_id for chunk_id, _ in self.dense.search(query, self.candidate_k)])
+            try:
+                rankings.append([chunk_id for chunk_id, _ in self.dense.search(query, self.candidate_k)])
+            except Exception:
+                # 向量路调用异常：退回 BM25，不把异常抛给调用方（REQ-023）
+                self.last_flags.append("FALLBACK_BM25")
+        elif self.bm25 is not None and self.bm25.ntotal > 0:
+            self.last_flags.append("FALLBACK_BM25")
         if self.bm25 is not None and self.bm25.ntotal > 0:
             rankings.append([chunk_id for chunk_id, _ in self.bm25.search(query, self.candidate_k)])
         if not rankings:

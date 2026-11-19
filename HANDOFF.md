@@ -4,9 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：`src/eval/mapping.py` 增 parent 映射、`src/eval/runner.py` 增 `use_parent`、`src/cli/eval.py` 增 `--parent`；`src/split/recursive.py` 改三级切分（段→句→硬切）；`evals/experiments-v0.3.md` 补切分与父子两张对比表。
-- 实测：三切分 dev 对比 `.venv\Scripts\python.exe -m src.cli.eval --split dev --retriever hybrid --index-dir ...` 均 0 → fixed R@5 0.8875／MRR 0.6948 最优，recursive 0.6875／0.5056，sliding 0.8375／0.6065；父子 `--parent` 0 → R@5 0.8500／MRR 0.6865，略低于单层；两组均不启用。
-- 待确认：无阻塞项；6 个提交本地攒着。v0.3 任务与收尾实验已完，下一步等你定（G4 或进 v0.4）。
+- 改动：`PROGRESS.md` 第 67 行按指定口径订正为「指标口径与数值未变；`run_id` 因 `cases_sha256` 变化由 `r5e4a62714526` 变为 `r6c23283f2577`」、第 5 行 v0.2 陈述加注「当时值」；新增 `src/retrieve/filtering.py`、`tests/test_filtering.py`；`src/retrieve/hybrid.py` 增 `last_flags` 与 `FALLBACK_BM25`；`05-modules.md` 目录树补齐。
+- 实测：`.venv\Scripts\python.exe -m unittest tests.test_filtering` 0（7 例）；真实数据：`category=行政法规` 过滤后 5 条全为该类、`publish_from=2099-01-01` 触发 `FILTER_RELAXED`、仅保留 BM25 索引时命中 5 条并标 `FALLBACK_BM25`；`unittest discover` 41 例（34+7）全过。
+- 待确认：无阻塞项；本轮改动本地未推（含两行订正），按约定攒到下次 paused 点。下一步 T-022 增量入库与质量报告。
 
 ## 核验方写（每轮）
 
@@ -23,7 +23,7 @@
 
 ## 当前状态（开发方维护，每轮更新）
 
-- 版本：v0.2 已发布；v0.3 任务与收尾实验完成（本地待推）
+- 版本：v0.3 已推送（`origin/dev` = `20c5c20`）；v0.4 进行中，T-021 完成（本地待推）
 - 门禁：G1/G2/G3 通过；CHG-001~006 已确认，001/002/003 状态行为「规格层已落地 + 剩余执行清单」
 - 权重：`.cache/models/bge-small-zh-v1.5`，指纹写入 `data/index/index-meta.json` 的 `weights_sha256`
 - 索引：全量 2704 条 512 维、5,675,789 字节（v0.1 的 34 条已重建覆盖）

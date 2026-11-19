@@ -93,3 +93,5 @@
 - v0.3 T-016：新增 `src/split/recursive.py`（按标题分段 + 段内句级合并）与 `src/split/sliding.py`（句子滑窗，边界落在句末）；`ingest` 增 `--strategy {fixed,recursive,sliding}`。v0.1 两篇上三策略 chunk 数 34 / 43 / 35，均入库成功（临时库验证，主库未动）。
 - v0.3 T-017：新增 `src/split/parent.py`（parent 按条聚合、child 为 parent 内小窗口、`collapse` 折叠去重、`parent_at` 锚点映射到 parent）；`Chunk` 增 `parent_id`，`dao.replace_document` 写 `parents` 表，`ingest` 增 `--parent-child`。两篇上 parent 14 / child 39，索引只含 child，20 个 child 命中折叠为 5 个 parent，v0.1 的 30 条锚点全部映射到 parent；单测 4 例。
 - 推送：`origin/dev` 更新至 `407fe62`（v0.3 T-016），积压 0。
+- v0.3 T-018：`embedder.py` 增 `build_index_text`（路径 ≤60 字）与 `fit`（512 token 截断）；`build_index` 增 `--inject-heading`／`--out` 并回写 `index_text_sha256`；`eval` 增 `--index-dir`。实测注入后 dev R@1/R@5/MRR/nDCG 均降（仅 R@3 +6.25pt），**不启用**，结论与数据见 `evals/experiments-v0.3.md`；`index_text_sha256` 已回置 NULL。
+- 修 `build_index` 在 `--out` 为相对路径时 `relative_to` 抛错导致退出码 1 的问题。

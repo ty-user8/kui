@@ -89,6 +89,11 @@ def main() -> int:
         help="覆盖 retrieval.use_bm25：dense=只用向量，hybrid=向量+BM25 融合",
     )
     parser.add_argument(
+        "--index-dir",
+        default=None,
+        help="覆盖 config.paths.index_dir，用于对比不同索引（如标题注入前后）",
+    )
+    parser.add_argument(
         "--run-suffix",
         default="",
         help="给 run_id 加后缀（如 -dev-dense），用于同一配置指纹下并列保留多组实验",
@@ -101,6 +106,11 @@ def main() -> int:
     except ConfigError as exc:
         print("配置错误: %s" % exc)
         return 2
+
+    if args.index_dir is not None:
+        import dataclasses
+
+        conf = dataclasses.replace(conf, paths=dataclasses.replace(conf.paths, index_dir=pathlib.Path(args.index_dir)))
 
     if args.retriever is not None:
         import dataclasses

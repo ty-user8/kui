@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**v0.2 已完成并发布**（2026-11-19）：G4 过门，`origin/dev` = `3ec9f67`；基线 `r5e4a62714526`（150 篇 / 2704 chunk / 100 条 / 融合，R@5 0.9000）。**v0.3 进行中**：T-016 三种切分、T-017 父子 chunk 完成，下一步 T-018。。
+**v0.2 已完成并发布**（2026-11-19）：G4 过门，`origin/dev` = `3ec9f67`；基线 `r5e4a62714526`（150 篇 / 2704 chunk / 100 条 / 融合，R@5 0.9000）。**v0.3 进行中**：T-016 切分、T-017 父子、T-018 标题注入（结论不启用）完成，下一步 T-019 rerank。。
 
 ## Implement 进度
 
@@ -24,6 +24,7 @@
 | T-013 | `src/trace.py`、`tests/test_trace.py` | 13 个字段齐全（`run_id`~`flags`）；`excerpt` 恒为 80 码点、换行折空格；追加写用独立 `.lock` 文件 + 平台锁（POSIX `flock`／Windows `msvcrt.locking`），4 线程×25 行并发写 100 行全部可解析；自检 3 条 trace 无 `sk-` 与用户目录；单测 6 例通过 |
 | T-012 | `src/retrieve/hybrid.py`、`tests/test_hybrid.py`、`tests/__init__.py` | RRF 融合 `score = Σ 1/(k+rank)`；单测 8 例全过（单路、双路求和、排序、截断、单路缺失、双路空、同路重复、k 非正）；三条查询两路与融合均非空，前两条两路 top1 一致（`00012`／`00002`），融合 top1 分数 0.03279（两路均第 1） |
 | T-011 | `src/index/bm25_index.py` | 2704 chunk 建 BM25，体积 5,442,894 字节（存分词结果 + 参数，加载时重建 `BM25Okapi`）；jieba 分词正确（「发明专利权的期限是几年」→ 发明/专利权/的/期限/是/几年）；三条查询 BM25 与向量两路均返回非空，前两条两路 top1 一致（`00012`／`00002`）；建索引 4.4 s |
+| T-018 | `src/index/embedder.py`、`src/cli/build_index.py`、`src/cli/eval.py`、`evals/experiments-v0.3.md` | 标题注入实现：路径 ≤60 字（实测截断 0 条）拼在正文前，超 512 token 截尾（255 条触发）；索引 `data/index-head` 2704 条、5,675,789 字节；对比 dev 80 条：R@1 0.4750→0.4375、R@3 0.7125→0.7750、R@5 0.8375→0.8250、MRR 0.6121→0.5958，**除 R@3 外均降，不启用**；`documents.index_text_sha256` 已回置 NULL |
 | T-017 | `src/split/parent.py`、`src/store/dao.py`、`src/cli/ingest.py`（`--parent-child`）、`tests/test_parent.py` | 两篇上 parent 14 / child 39；索引只含 child（39 条，parent 不入索引）；检索 20 个 child 折叠为 5 个 parent（同 parent 去重）；锚点映射 v0.1 的 30 条全部落到 parent；单测 4 例通过 |
 | T-016 | `src/split/recursive.py`、`src/split/sliding.py`、`src/cli/ingest.py`（`--strategy`） | 三种策略均可切换：v0.1 两篇上 fixed 34 / recursive 43 / sliding 35 个 chunk，均入库成功（临时库 `data/rag-split-*.db`，未动主库）；recursive 不跨章节、sliding 边界落在句末 |
 | T-009 | 全链路排查与 DoD 逐条核对（无新增源文件） | 链路 `compileall` → `ingest` → `build_index` → `eval`×2 → `fill_anchors --check` 全部退出码 0；重建索引后 `run_id` 仍 `r98aa795a93cf`，attempt-1~4 的 `metrics.json` 均 544 字节、sha `a83df586…`；DoD 六项逐条成立（30/30 confirmed、区间无空、`unmapped=0`、四份一致、0 次 LLM、六项指标齐全）；`12-release-checklist.md` 勾选 10 项 |

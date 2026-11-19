@@ -15,6 +15,20 @@ import pathlib
 import numpy as np
 
 WEIGHT_FILES = ("model.safetensors", "pytorch_model.bin")
+PATH_MAX_CHARS = 60
+MAX_TOKENS = 512
+
+
+def build_index_text(heading_path: str, text: str, path_max: int = PATH_MAX_CHARS) -> tuple[str, bool]:
+    """把标题路径拼在正文前；路径超过 `path_max` 字时截断。返回（索引文本, 是否截断）。"""
+    path = (heading_path or "").strip()
+    truncated = False
+    if len(path) > path_max:
+        path = path[:path_max]
+        truncated = True
+    if not path:
+        return text, truncated
+    return "%s\n%s" % (path, text), truncated
 
 
 def sha256_file(path: pathlib.Path) -> str:
@@ -92,6 +106,16 @@ class Embedder:
         if vectors.shape[1] != self.dim:
             raise RuntimeError("向量维度 %d 与配置 embedding_dim=%d 不一致" % (vectors.shape[1], self.dim))
         return vectors
+
+    def fit(self, text: str, max_tokens: int = MAX_TOKENS) -> tuple[str, bool]:
+        """按模型 token 上限截断（超过时截尾部），返回（文本, 是否截断）。"""
+        tokenizer = getattr(self._model, "tokenizer", None)
+        if tokenizer is None:
+            return text, False
+        ids = tokenizer.encode(text, add_special_tokens=False)
+        if len(ids) <= max_tokens:
+            return text, False
+        return tokenizer.decode(ids[:max_tokens]), True
 
     def max_norm_error(self, vectors: np.ndarray) -> float:
         """返回各向量 L2 范数与 1 的最大偏差，用于断言归一化生效。"""

@@ -4,9 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：`src/split/parent.py` 新建（parent 聚合、child 切分、`collapse` 去重、`parent_at` 映射）；`Chunk` 加 `parent_id`；`dao` 写 `parents` 表；`ingest` 增 `--parent-child`；`tests/test_parent.py` 4 例；`PROGRESS.md` 推送记录更新为 `407fe62`。
-- 实测：`.venv\Scripts\python.exe -m src.cli.ingest --source v01_subset --parent-child` 0（parent 14 / child 39）；索引只含 child 39 条；检索 20 个 child 折叠为 5 个 parent；v0.1 的 30 条锚点全部映射到 parent；`-m unittest tests.test_parent` 4 例通过；`git ls-remote` = `407fe62`、积压 0。
-- 待确认：无阻塞项；本轮提交（T-017）尚未推送，按约定等下次 push 确认。下一步 T-018。
+- 改动：`src/index/embedder.py` 增 `build_index_text`／`fit`；`src/cli/build_index.py` 增 `--inject-heading`／`--out` 并回写 `index_text_sha256`；`src/cli/eval.py` 增 `--index-dir`；新增 `evals/experiments-v0.3.md`。
+- 实测：`.venv\Scripts\python.exe -m src.cli.build_index --inject-heading --out data/index-head` 0（2704 条、5,675,789 字节、路径截断 0、token 截断 255、193.7 s）；dev 对比 `.venv\Scripts\python.exe -m src.cli.eval --split dev --retriever dense --index-dir {data/index,data/index-head}` 均 0：R@1 0.4750→0.4375、R@3 0.7125→0.7750、R@5 0.8375→0.8250、MRR 0.6121→0.5958 → 不启用。
+- 待确认：无阻塞项；T-017／T-018 共 2 个提交本地攒着，等 paused 点一并 push。下一步 T-019。
 
 ## 核验方写（每轮）
 
@@ -23,7 +23,7 @@
 
 ## 当前状态（开发方维护，每轮更新）
 
-- 版本：v0.2 已发布；v0.3 进行中，T-016／T-017 完成（`origin/dev` = `407fe62`）
+- 版本：v0.2 已发布；v0.3 进行中，T-016~T-018 完成（`origin/dev` = `407fe62`，本地待推）
 - 门禁：G1/G2/G3 通过；CHG-001~006 已确认，001/002/003 状态行为「规格层已落地 + 剩余执行清单」
 - 权重：`.cache/models/bge-small-zh-v1.5`，指纹写入 `data/index/index-meta.json` 的 `weights_sha256`
 - 索引：全量 2704 条 512 维、5,675,789 字节（v0.1 的 34 条已重建覆盖）
@@ -36,7 +36,7 @@
 
 ## 待确认（开发方写）
 
-- 基线 `r5e4a62714526`（CHG-007）；v0.3 T-016 已推送，T-017 本地待推
+- 基线 `r5e4a62714526`（CHG-007）；v0.3 T-016 已推送，T-017／T-018 本地待推
 
 ## 结论（核验方写）
 

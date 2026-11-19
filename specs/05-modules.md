@@ -51,6 +51,9 @@ rag/
 │       ├── ask.py               # 检索 → 拼 Prompt → 生成
 │       └── citation.py          # 引用 id 落在 top-k 的规则式校验
 ├── app.py                       # Streamlit 入口（v0.5）
+├── tests/
+│   ├── __init__.py
+│   └── test_hybrid.py           # RRF 融合的单测（8 例）
 ├── scripts/
 │   ├── normalize_lock.py        # 规范化 requirements.lock.txt 的本地 wheel 行，打印 deps_sha256
 │   ├── download_model.py        # 从官方 API 元数据下载模型权重并按 sha256 校验

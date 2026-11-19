@@ -4,9 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：`src/retrieve/rerank.py` 增 `RerankedRetriever`（归一化 → 融合 top-N → 重排）；`src/eval/runner.py` 组装三段检索链并带降级；`src/cli/eval.py` 增 `--rerank`；`scripts/download_model.py` 增 `--only`；`evals/experiments-v0.3.md` 补 rerank 对比；新增 D-023（不引入 OpenCC）。
-- 实测：`.venv\Scripts\python.exe -m unittest tests.test_normalize tests.test_rerank tests.test_hybrid tests.test_parent tests.test_trace` 0（27 例）；`.venv\Scripts\python.exe -m src.cli.eval --split dev --retriever hybrid --rerank {off,on} --run-suffix=-dev-{hybrid,rerank}` 均 0 → R@1 0.5500→0.5625、MRR 0.6948→0.6990、nDCG@5 0.7440→0.7470（R@3/@5 持平），幅度小未启用；模型离线加载 1.1 s、打分 0.13 s。
-- 待确认：无阻塞项；3 个提交本地攒着等 paused 点。下一步 T-020（bootstrap + 延迟基线）。
+- 改动：`src/eval/bootstrap.py` 新建（配对 bootstrap + `verdict` + `percentiles`）；`tests/test_bootstrap.py` 7 例；`evals/experiments-v0.3.md` 补 T-020 区间与延迟表；`05-modules.md` 目录树补齐。
+- 实测：`.venv\Scripts\python.exe -m unittest tests.test_bootstrap` 0（7 例）；`.venv\Scripts\python.exe -m src.eval.bootstrap` 0 → R@1 +0.0125 区间 [+0.0000, +0.0375]、R@5 [0,0]、MRR [−0.0031, +0.0187]，三项 overlap → 不声明提升；延迟 p50 5,288.8 ms／p95 7,385.7 ms，超 3000 ms 超时。
+- 待确认：无阻塞项；4 个提交本地攒着。v0.3 任务已全部完成，下一步按 tasks 进 v0.3 收尾（评测接入父子/切分对比）或等你指示。
 
 ## 核验方写（每轮）
 
@@ -23,7 +23,7 @@
 
 ## 当前状态（开发方维护，每轮更新）
 
-- 版本：v0.2 已发布；v0.3 进行中，T-016~T-019 完成（本地待推）
+- 版本：v0.2 已发布；v0.3 进行中，T-016~T-020 完成（本地待推）
 - 门禁：G1/G2/G3 通过；CHG-001~006 已确认，001/002/003 状态行为「规格层已落地 + 剩余执行清单」
 - 权重：`.cache/models/bge-small-zh-v1.5`，指纹写入 `data/index/index-meta.json` 的 `weights_sha256`
 - 索引：全量 2704 条 512 维、5,675,789 字节（v0.1 的 34 条已重建覆盖）

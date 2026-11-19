@@ -99,3 +99,5 @@
 - 繁转简需 OpenCC，venv 未装，该步跳过并置 `t2s=False`；是否引入依赖待确认。
 - T-019 端到端：`bge-reranker-base` 权重落 `.cache/models/bge-reranker-base/`（safetensors 1,112,206,140 字节 + tokenizer 四件，离线加载 1.1 s）；`RerankedRetriever` 接入 runner，`eval` 增 `--rerank on|off`。dev 80 条对比：R@1 0.5500→0.5625、MRR 0.6948→0.6990、nDCG@5 0.7440→0.7470，R@3/@5 持平，幅度不足以宣称改进，`use_rerank` 保持 false。
 - `download_model.py` 增 `--only`（按文件名白名单下载），避免拉取不需要的 `onnx/model.onnx` 与 `pytorch_model.bin`。
+- v0.3 T-020：新增 `src/eval/bootstrap.py`（配对 bootstrap 1000 轮、`verdict` 三态、`percentiles`）与 `tests/test_bootstrap.py`（7 例）。实测 dev 80 条：R@1 差值 +0.0125 区间 [+0.0000, +0.0375]、R@5 [0,0]、MRR [−0.0031, +0.0187]，三项 overlap → 不声明提升，`use_rerank` 保持 false。
+- 延迟基线：检索（融合+重排）p50 5,288.8 ms、p95 7,385.7 ms，超过 `rerank_timeout_ms` 3000 ms，说明 CPU 上重排多数请求会降级；T-019 的 +1.25pt 属部分降级条件下的观测，不作为启用依据。

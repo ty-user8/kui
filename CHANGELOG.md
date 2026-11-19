@@ -88,3 +88,5 @@
 - 标注起草完成：`cases.csv` 达 100 条（30 `confirmed` + 70 `candidate`，C031~C100，dev 80 / holdout 20，覆盖 36 篇文档）；难度分布同义改写 40、否定 25、术语 12、列举 11、数值 10、编号敏感 1、条件 1。
 - `anchor-review.md` 说明改为参数化：「当前 100 条，最终 100 条全部 `confirmed` 后再进 T-015 指标」。
 - 标注：新增 32 条 `candidate`（C031~C062，dev 26 / holdout 6，覆盖劳动法、医疗保障法、原子能法、反家暴法、反洗钱法、反跨境腐败法、反食品浪费法、商业银行法、商标法两版、国境卫生检疫法、国家赔偿法）；`fill_anchors.py` 增 `--fill-empty`，只填新增空值并回填空 `heading_path`，其余行仍逐字校验。
+- `CHG-007` 确认并执行：基线由 `r98aa795a93cf` 换为 `r5e4a62714526`，`PROGRESS.md` 新增「当前基线」段；`evals/experiments-v0.2.md` D 行 holdout 数由 14 订正为 20（指标不变）；`12-release-checklist.md` 补 v0.2 专项 9 项并勾选通用项 C-01/C-03/C-04/C-05/C-08。
+- G4 材料就绪：生效依据、`eval` 输出、回归对比、自检（`compileall`／14 例单测／`--check`／复现字节一致）、检查单、附录 C 文本扫描零命中。

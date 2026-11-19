@@ -4,9 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：`src/cli/eval.py` 增 `--retriever`／`--run-suffix`；`src/eval/runner.py` 按配置选路并修重复检索；`evals/experiments-v0.2.md` 新建；`cases.csv` 改写 C083/C096 的 query；新增 `CHG-007-baseline-replacement.md`（待确认）。
-- 实测：`.venv\Scripts\python.exe -m src.cli.eval --split dev --retriever dense --run-suffix=-dev-dense` 0（R@5 0.8375、MRR 0.6121）；`... --retriever hybrid --run-suffix=-dev-hybrid` 0（0.8875、0.6948）；`... --split all --retriever hybrid` 0（100 条、`run_id=r5e4a62714526`、R@1 0.5600／@5 0.9000、MRR 0.7045、nDCG@5 0.7543）；`-m unittest` 14 例全过。
-- 待确认：**CHG-007 基线替换**（把基线从 `r98aa795a93cf` 换成 `r5e4a62714526`）——这属新变更单，停在门口等你点头。
+- 改动：`PROGRESS.md` 新增「当前基线」（`r5e4a62714526`）与「G4 就绪材料」两段；`12-release-checklist.md` 补 v0.2 专项 9 项、通用项勾选 8 项；`evals/experiments-v0.2.md` D 行 holdout 数订正为 20；`CHG-007` 转已完成。
+- 实测：`.venv\Scripts\python.exe -m src.cli.eval --split dev --retriever hybrid --run-suffix=-dev-hybrid` 第二次 attempt-2 → 与 attempt-1 `metrics.json` 逐字节一致（复现，未碰 holdout）；`-m unittest` 14 例通过；附录 C 关键词扫描 `src/`、`scripts/` 零命中；C-01 技术方案 29920 / `76b18223…` 未变、manifest 150 条与实体一致。
+- 待确认：**G4 门禁**（材料清单见 `PROGRESS.md`「G4 就绪材料」）；C-09（默认账号表）待 v0.5 README。
 
 ## 核验方写（每轮）
 
@@ -23,11 +23,11 @@
 
 ## 当前状态（开发方维护，每轮更新）
 
-- 版本：v0.2 任务完成（T-010~T-015）；v0.1 已推送（`origin/dev`），v0.2 未 push
+- 版本：v0.2 完成待 G4；v0.1 已推送（`origin/dev`），v0.2 未 push（dev 积压提交待 G4 后推）
 - 门禁：G1/G2/G3 通过；CHG-001~006 已确认，001/002/003 状态行为「规格层已落地 + 剩余执行清单」
 - 权重：`.cache/models/bge-small-zh-v1.5`，指纹写入 `data/index/index-meta.json` 的 `weights_sha256`
 - 索引：全量 2704 条 512 维、5,675,789 字节（v0.1 的 34 条已重建覆盖）
-- 指标（v0.2 最终，100 条 / 融合）：R@1 0.5600／@3 0.8600／@5 0.9000、MRR 0.7045、nDCG@5 0.7543，`run_id=r5e4a62714526`（基线替换待 CHG-007）
+- 指标（v0.2 最终，100 条 / 融合）：R@1 0.5600／@3 0.8600／@5 0.9000、MRR 0.7045、nDCG@5 0.7543，`run_id=r5e4a62714526`（基线，CHG-007 已确认）
 - 案例：BC-001 = C015（失败）；BC-002 = C010（现象）；全量语料后待复测
 - 规模：已回填实测——v0.1 14925 字/34 chunk；v0.2 150 篇/2704 chunk/1,191,197 字/索引 5.42 MB
 - 检查单：`12-release-checklist.md` v0.1 专项 8 项 + C-06/C-07 已勾选；v0.2 段待补
@@ -36,7 +36,7 @@
 
 ## 待确认（开发方写）
 
-- 标注 100/100 confirmed；T-010~T-015 完成，基线替换待 CHG-007 确认，之后进 G4
+- 基线 `r5e4a62714526`（CHG-007 已确认）；v0.2 任务完成，停在 G4 门禁
 
 ## 结论（核验方写）
 

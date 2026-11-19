@@ -182,7 +182,9 @@ def write_review(rows: list[dict[str, str]], titles: dict[str, str]) -> None:
         "",
         "区间与 `anchor_text` 均由 `evals/tools/fill_anchors.py` 从 DOCX 基准文本抽取，二者逐字一致。",
         "「整段文本」列即 `anchor_text` 全文，是核对对象；「首句」列只截前 60 字，仅供扫读。",
-        "`anchor_status` 未改动，仍为 `candidate`。",
+        "`anchor_status`：已确认 %d 条、待确认 %d 条（共 %d 条）。"
+        % (sum(1 for r in rows if (r.get("anchor_status") or "") == "confirmed"),
+           sum(1 for r in rows if (r.get("anchor_status") or "") != "confirmed"), len(rows)),
         "",
         "确认方式：逐条核对「条号 / 区间 / 整段文本」是否指向正确条款，确认后在 `evals/cases.csv`",
         "把该行 `anchor_status` 改为 `confirmed`。当前 %d 条，最终 %d 条全部 `confirmed` 后再进 T-015 指标。"

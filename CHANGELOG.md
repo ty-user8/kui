@@ -78,6 +78,8 @@
 - 修 `docx_reader._table_chars` 的去重 bug：原先用 `str(id(cell._tc))`，元素回收后地址复用导致不同单元格被误判重复，表格字符只统计到 86；改为直接以 `_tc` 元素入集合后实测 2205，与 CHG-002 项五估算一致，`chars_total` 同步由 6951 修正为 9070。
 - 全量索引重建：2704×512、体积 5,675,789 字节（5.42 MB）、编码 203 s；参考基线 `run_id=rcc22c5c40628`（30 条 confirmed）Recall@1 0.7333、Recall@5 0.9667、MRR 0.8150、nDCG@5 0.8524。
 - 按 CHG-006 回填 `02-scope.md` §2（新增 v0.2 全量实测段）与 `03-architecture.md` §5（chunk 2704 / 1,191,197 字），快照表同步。
+- T-011：新增 `src/index/bm25_index.py`（jieba 分词 + `BM25Okapi`，只持久化分词结果与参数、加载时重建，避免 `python -m` 下 pickle 类路径写成 `__main__` 的跨进程加载失败）；2704 chunk、索引 5,442,894 字节；两路检索均非空，前两条查询两路 top1 一致。
+- 依赖：`jieba 0.42.1`、`rank_bm25 0.2.2` 装入 venv（jieba 为源码包，构建耗时约 13 分钟）。
 - 标注起草完成：`cases.csv` 达 100 条（30 `confirmed` + 70 `candidate`，C031~C100，dev 80 / holdout 20，覆盖 36 篇文档）；难度分布同义改写 40、否定 25、术语 12、列举 11、数值 10、编号敏感 1、条件 1。
 - `anchor-review.md` 说明改为参数化：「当前 100 条，最终 100 条全部 `confirmed` 后再进 T-015 指标」。
 - 标注：新增 32 条 `candidate`（C031~C062，dev 26 / holdout 6，覆盖劳动法、医疗保障法、原子能法、反家暴法、反洗钱法、反跨境腐败法、反食品浪费法、商业银行法、商标法两版、国境卫生检疫法、国家赔偿法）；`fill_anchors.py` 增 `--fill-empty`，只填新增空值并回填空 `heading_path`，其余行仍逐字校验。

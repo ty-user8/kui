@@ -4,9 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：`evals/cases.csv` 补 38 条 candidate（C063~C100，凑齐 100 条）；`evals/tools/fill_anchors.py` 的核对表说明参数化；`evals/anchor-review.md` 重出 100 行；`CHG-002` 项二标为起草完成。
-- 实测：`fill_anchors --fill-empty` 0（回填 100/100 逐字一致）；`--check` 0；`cases.csv` 100 条 = 30 `confirmed` + 70 `candidate`，dev 80 / holdout 20，覆盖 36 篇文档，空区间 0，44,530 字节 / `5829cd74ed3f90cb`；核对表 100 行。
-- 待确认：70 条 candidate（C031~C100）待你逐条确认并自行改 `confirmed`；未全 confirmed 不进 T-015。
+- 改动：`src/index/bm25_index.py` 新建（jieba 分词 + BM25Okapi，纯数据持久化）；`fill_anchors.py` 核对表状态行改动态统计；`04-tech-choice.md` 依赖表标 jieba/rank_bm25 已装。
+- 实测：`fill_anchors --fill-empty`/`--check` 均 0（100 条逐字一致，`cases.csv` 44,530 字节 / `9c8a51c7…`，100/100 `confirmed`）；`python -m src.index.bm25_index` 0（2704 chunk、索引 5,442,894 字节、4.4 s，分词「发明/专利权/的/期限/是/几年」）；三条查询 BM25 与向量两路均非空，前两条 top1 一致（`00012`／`00002`）。
+- 待确认：无阻塞项；下一步 T-012（RRF 融合），未到四种暂停点继续推进。
 
 ## 核验方写（每轮）
 
@@ -23,7 +23,7 @@
 
 ## 当前状态（开发方维护，每轮更新）
 
-- 版本：v0.2 进行中；v0.1 已推送（`origin/dev`），T-010 完成
+- 版本：v0.2 进行中；v0.1 已推送（`origin/dev`），T-010／T-011 完成
 - 门禁：G1/G2/G3 通过；CHG-001~006 已确认，001/002/003 状态行为「规格层已落地 + 剩余执行清单」
 - 权重：`.cache/models/bge-small-zh-v1.5`，指纹写入 `data/index/index-meta.json` 的 `weights_sha256`
 - 索引：全量 2704 条 512 维、5,675,789 字节（v0.1 的 34 条已重建覆盖）
@@ -36,7 +36,7 @@
 
 ## 待确认（开发方写）
 
-- 70 条 candidate 待人工确认（C031~C100）；未全 confirmed 不进 T-015；基线替换会另出变更单
+- 标注 100/100 confirmed；T-011 完成，下一步 T-012 RRF；基线替换会另出变更单
 
 ## 结论（核验方写）
 

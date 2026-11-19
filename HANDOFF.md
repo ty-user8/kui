@@ -4,9 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：`src/retrieve/hybrid.py` 新建（`fuse` RRF + `HybridRetriever`，单路缺失退化）；`tests/test_hybrid.py` 新建 8 例单测；`05-modules.md` 目录树补 `tests/`。
-- 实测：`python -m unittest tests.test_hybrid` 0（8 例全过：`score = Σ 1/(k+rank)`、排序、截断、单路降级、双路空、同路去重、`k` 非正报错）；`python -m src.retrieve.hybrid` 0（三查询两路与融合均非空，前两条两路 top1 一致 `00012`／`00002`，融合 top1 分数 0.03279）。
-- 待确认：无阻塞项；下一步 T-013（trace JSONL），未到四种暂停点继续推进。
+- 改动：`src/trace.py` 新建（13 字段固定顺序、`excerpt` 80 码点、独立 `.lock` + 平台锁）；`tests/test_trace.py` 新建 6 例；`05-modules.md` 目录树补 `src/trace.py` 与 `test_trace.py`。
+- 实测：`.venv\Scripts\python.exe -m unittest tests.test_trace tests.test_hybrid` 0（14 例全过）；`.venv\Scripts\python.exe -m src.trace` 0（3 条 trace、13 字段、excerpt 均 80、无 `sk-`／用户目录；4 线程×25 行并发 100 行全部可解析）。
+- 待确认：无阻塞项；下一步 T-014 收尾（100 条已备齐，主要补 `anchor_status` 与用例元数据核对）／T-015 实验，未到 G4 或 push 前不打扰。
 
 ## 核验方写（每轮）
 
@@ -23,7 +23,7 @@
 
 ## 当前状态（开发方维护，每轮更新）
 
-- 版本：v0.2 进行中；v0.1 已推送（`origin/dev`），T-010~T-012 完成
+- 版本：v0.2 进行中；v0.1 已推送（`origin/dev`），T-010~T-013 完成
 - 门禁：G1/G2/G3 通过；CHG-001~006 已确认，001/002/003 状态行为「规格层已落地 + 剩余执行清单」
 - 权重：`.cache/models/bge-small-zh-v1.5`，指纹写入 `data/index/index-meta.json` 的 `weights_sha256`
 - 索引：全量 2704 条 512 维、5,675,789 字节（v0.1 的 34 条已重建覆盖）
@@ -36,7 +36,7 @@
 
 ## 待确认（开发方写）
 
-- 标注 100/100 confirmed；T-012 完成，下一步 T-013 trace；基线替换会另出变更单
+- 标注 100/100 confirmed；T-013 完成，下一步 T-014/T-015；基线替换会另出变更单
 
 ## 结论（核验方写）
 

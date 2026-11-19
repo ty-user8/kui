@@ -53,7 +53,8 @@ rag/
 ├── app.py                       # Streamlit 入口（v0.5）
 ├── tests/
 │   ├── __init__.py
-│   └── test_hybrid.py           # RRF 融合的单测（8 例）
+│   ├── test_hybrid.py           # RRF 融合单测（8 例）
+│   └── test_trace.py            # trace 写入与 excerpt 单测（6 例）
 ├── scripts/
 │   ├── normalize_lock.py        # 规范化 requirements.lock.txt 的本地 wheel 行，打印 deps_sha256
 │   ├── download_model.py        # 从官方 API 元数据下载模型权重并按 sha256 校验

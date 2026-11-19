@@ -44,3 +44,15 @@
 | V02-07 | holdout 只在最终运行出现一次 | 检查各组 `--split` 参数 | 通过：B/C 为 `--split dev`，仅 D 为 `all` |
 | V02-08 | 两路索引均存在且条数一致 | 读 `index-meta.json` 与 `bm25-meta.json` | 通过：向量 2704×512（5.68 MB）、BM25 2704（5.44 MB） |
 | V02-09 | 评测回路 0 次 LLM 调用 | 不设 `RAG_LLM_API_KEY` 跑通 | 通过 |
+
+## v0.3 专项
+
+| # | 检查项 | 判定方式 | 状态 |
+| --- | --- | --- | --- |
+| V03-01 | 三种切分可切换且 chunk 数互不相同 | `ingest --strategy {fixed,recursive,sliding}` 各跑一次 | 通过：2704 / 3402 / 2918 |
+| V03-02 | 父子结构：只索引 child、命中折叠到 parent、锚点映射到 parent | `ingest --parent-child` + 单测 + 映射统计 | 通过：v0.1 的 30/30 映射到 parent；折叠去重单测 4 例 |
+| V03-03 | rerank 默认关闭，启用需显式开关 | 读 `config.yaml` 的 `use_rerank` | 通过：`false`；`eval` 需 `--rerank on` 才启用 |
+| V03-04 | bootstrap 给出区间，区间重叠不得声明提升 | `python -m src.eval.bootstrap` | 通过：R@1 [+0.0000,+0.0375]、R@5 [0,0]、MRR [−0.0031,+0.0187] 三项 overlap，文档未写「提升」 |
+| V03-05 | 延迟基线已记录 p50/p95 与索引体积 | `evals/experiments-v0.3.md` | 通过：检索 p50 5,288.8 ms／p95 7,385.7 ms；索引体积三档均已记 |
+| V03-06 | 三处否决有据且默认路径未变 | 对照 `experiments-v0.3.md` 与 `config.yaml` | 通过：标题注入、rerank、recursive/sliding 与父子结构均未启用，基线切分 fixed 不变 |
+| V03-07 | 查询归一化：全半角与空白折叠后结果一致 | 单测 `tests/test_normalize.py` | 通过：5 例（繁转简按 D-023 不适用） |

@@ -50,8 +50,8 @@
 
 | 项 | 值 |
 | --- | --- |
-| `run_id` | `r5e4a62714526` |
-| 生效依据 | `CHG-007`（2026-11-19 确认），取代 v0.1 的 `r98aa795a93cf` |
+| `run_id` | `r6c23283f2577` |
+| 生效依据 | `CHG-007`（2026-11-19 确认），取代 v0.1 的 `r98aa795a93cf`；同日 C083/C096 的 query 按 REQ-037 修正后 `cases_sha256` 变化，配置指纹随之更新为新 `run_id`，六项指标重跑后与旧值完全一致（0.5600 / 0.8600 / 0.9000 / 0.7045 / 0.7543） |
 | 语料 / 用例 | 150 篇 / 2704 chunk；100 条（dev 80 / holdout 20，全 `confirmed`） |
 | 检索 | 向量 + BM25 RRF（`rrf_k=60`，每路 20 候选） |
 | 指标 | Recall@1 0.5600／@3 0.8600／@5 0.9000，MRR 0.7045，nDCG@5 0.7543，HitRate@5 0.9000 |
@@ -62,12 +62,12 @@
 
 | 材料 | 位置 / 结果 |
 | --- | --- |
-| 本版生效依据 | T-010~T-015 完成记录 + `CHG-002`（项一/项二/项五）+ `CHG-006` + `CHG-007` |
-| `eval` 输出 | `data/runs/r5e4a62714526/attempt-1/metrics.json`；dev 对比见 `r5e4a62714526-dev-{dense,hybrid}` |
-| 回归对比 | 旧基线不可比（语料 2→150、用例 30→100），见 `evals/experiments-v0.2.md` 结论 1 |
-| 自检 | `compileall` 0；`unittest` 14 例通过；`fill_anchors --check` 0；复现 attempt-1/2 逐字节一致 |
-| 检查单 | `12-release-checklist.md` v0.1 专项 8 项 + v0.2 专项 9 项 + 通用项 8 项已勾选（C-09 待 v0.5） |
-| 说明文本 | 附录 C.4 关键词扫描零命中 |
+| 本版生效依据 | T-016~T-020 完成记录 + 收尾实验；`D-023`（不引入 OpenCC）；三处否决不启用 |
+| `eval` 输出 | 基线 `r6c23283f2577`（100 条全量）；分组 `-dev-split-{fixed,recursive,sliding}`、`-dev-parent`、`-dev-rerank`、`-dev-{nohead,head}` |
+| 回归对比 | 基线未变（`r5e4a62714526` 口径下的语料/用例不变，v0.3 未替换切分与检索链）；各组差异见 `evals/experiments-v0.3.md` |
+| 自检 | `compileall` 0；`unittest discover` 34 例通过；`fill_anchors --check` 0（100 条逐字一致） |
+| 检查单 | `12-release-checklist.md`：v0.1 专项 8 项、v0.2 专项 9 项、v0.3 专项 7 项、通用项 8 项已勾选（C-09 待 v0.5） |
+| 说明文本 | 附录 C.4 关键词扫描零命中（本轮新增文件仍适用） |
 
 ## 步骤 5 核对结果（落盘）
 

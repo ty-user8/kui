@@ -4,9 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：`PROGRESS.md` 第 67 行按指定口径订正为「指标口径与数值未变；`run_id` 因 `cases_sha256` 变化由 `r5e4a62714526` 变为 `r6c23283f2577`」、第 5 行 v0.2 陈述加注「当时值」；新增 `src/retrieve/filtering.py`、`tests/test_filtering.py`；`src/retrieve/hybrid.py` 增 `last_flags` 与 `FALLBACK_BM25`；`05-modules.md` 目录树补齐。
-- 实测：`.venv\Scripts\python.exe -m unittest tests.test_filtering` 0（7 例）；真实数据：`category=行政法规` 过滤后 5 条全为该类、`publish_from=2099-01-01` 触发 `FILTER_RELAXED`、仅保留 BM25 索引时命中 5 条并标 `FALLBACK_BM25`；`unittest discover` 41 例（34+7）全过。
-- 待确认：无阻塞项；本轮改动本地未推（含两行订正），按约定攒到下次 paused 点。下一步 T-022 增量入库与质量报告。
+- 改动：`src/cli/ingest.py` 改为默认增量（哈希跳过 + 批内去重 + `--force`）、逐文件写 `ingest_log`、结束输出质量报告；`decide_action` 抽成纯函数；新增 `tests/test_ingest.py`；`05-modules.md` 目录树补齐。
+- 实测：`.venv\Scripts\python.exe -m src.cli.ingest --source full` 连跑两次均「待写入 0／未变 150」、`documents=150`／`chunks=2704` 不变；`--force` 后「待写入 150」但行数仍不变，`ingest_log` 记 insert/content_changed；质量报告 `excluded_chars` 2,205（0.19%）、条号覆盖 53.8%；`unittest discover` 47 例全过。
+- 待确认：无阻塞项；本轮改动未推（累计 2 个提交），等 paused 点。下一步 T-023 状态机与四接口。
 
 ## 核验方写（每轮）
 
@@ -23,7 +23,7 @@
 
 ## 当前状态（开发方维护，每轮更新）
 
-- 版本：v0.3 已推送（`origin/dev` = `20c5c20`）；v0.4 进行中，T-021 完成（本地待推）
+- 版本：v0.3 已推送（`origin/dev` = `20c5c20`）；v0.4 进行中，T-021／T-022 完成（本地待推）
 - 门禁：G1/G2/G3 通过；CHG-001~006 已确认，001/002/003 状态行为「规格层已落地 + 剩余执行清单」
 - 权重：`.cache/models/bge-small-zh-v1.5`，指纹写入 `data/index/index-meta.json` 的 `weights_sha256`
 - 索引：全量 2704 条 512 维、5,675,789 字节（v0.1 的 34 条已重建覆盖）

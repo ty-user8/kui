@@ -103,3 +103,5 @@
 - 延迟基线：检索（融合+重排）p50 5,288.8 ms、p95 7,385.7 ms，超过 `rerank_timeout_ms` 3000 ms，说明 CPU 上重排多数请求会降级；T-019 的 +1.25pt 属部分降级条件下的观测，不作为启用依据。
 - v0.3 收尾：`mapping` 增 parent 映射、`runner` 增 `use_parent`、`eval` 增 `--parent`；`recursive` 修「超长段落产出超窗口 chunk」的隐患（改为段→句→硬切三级）。三切分对比：fixed R@5 0.8875 最优，recursive 0.6875、sliding 0.8375；父子 R@5 0.8500 略低于单层 → 两者均不启用，能力留在开关后。
 - v0.4 T-021：新增 `src/retrieve/filtering.py`（`MetadataFilter` + `FilteredRetriever`，候选层过滤、过滤后为空则放宽重试并标 `FILTER_RELAXED`）与 `tests/test_filtering.py`（7 例）；`hybrid.py` 增 `last_flags`，向量路异常或缺失时退回 BM25 并标 `FALLBACK_BM25`。实测：`category=行政法规` 过滤后 5 条全为该类；不存在日期触发 `FILTER_RELAXED`；仅保留 BM25 索引时命中 5 条并标 `FALLBACK_BM25`。
+- v0.4 T-022：`ingest` 改为默认增量（`text_sha256` 未变即跳过、批内同哈希判重复内容、`--force` 强制重写），逐文件写 `ingest_log`（action/reason），结束时输出质量报告 `data/ingest-report.json`（`chars_total`／`excluded_chars`／`excluded_ratio`／`tables_count`／`article_coverage`）；`decide_action` 抽成纯函数并加 `tests/test_ingest.py`（6 例）。入库后校验改为「清单篇数 vs 库内命中篇数」，兼容增量。
+- 修 `tests/test_ingest.py` 中 `seen` 字典方向写反导致 `duplicate_content` 用例误判的问题（`seen` 是 digest→doc_id）。

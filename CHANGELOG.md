@@ -101,3 +101,4 @@
 - `download_model.py` 增 `--only`（按文件名白名单下载），避免拉取不需要的 `onnx/model.onnx` 与 `pytorch_model.bin`。
 - v0.3 T-020：新增 `src/eval/bootstrap.py`（配对 bootstrap 1000 轮、`verdict` 三态、`percentiles`）与 `tests/test_bootstrap.py`（7 例）。实测 dev 80 条：R@1 差值 +0.0125 区间 [+0.0000, +0.0375]、R@5 [0,0]、MRR [−0.0031, +0.0187]，三项 overlap → 不声明提升，`use_rerank` 保持 false。
 - 延迟基线：检索（融合+重排）p50 5,288.8 ms、p95 7,385.7 ms，超过 `rerank_timeout_ms` 3000 ms，说明 CPU 上重排多数请求会降级；T-019 的 +1.25pt 属部分降级条件下的观测，不作为启用依据。
+- v0.3 收尾：`mapping` 增 parent 映射、`runner` 增 `use_parent`、`eval` 增 `--parent`；`recursive` 修「超长段落产出超窗口 chunk」的隐患（改为段→句→硬切三级）。三切分对比：fixed R@5 0.8875 最优，recursive 0.6875、sliding 0.8375；父子 R@5 0.8500 略低于单层 → 两者均不启用，能力留在开关后。

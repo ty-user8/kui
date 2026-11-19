@@ -78,7 +78,7 @@ def select_cases(rows: list[dict], split: str) -> tuple[list[dict], int]:
     return confirmed, unconfirmed
 
 
-def run_eval(conf, split: str = "all", top_k: int | None = None) -> dict:
+def run_eval(conf, split: str = "all", top_k: int | None = None, use_parent: bool = False) -> dict:
     started = time.time()
     rows = load_cases(conf.eval.cases_file)
     cases, unconfirmed = select_cases(rows, split)
@@ -86,10 +86,14 @@ def run_eval(conf, split: str = "all", top_k: int | None = None) -> dict:
     conn: sqlite3.Connection = connect(conf.require_db_path())
     try:
         grouped = mapping.load_chunk_spans(conn)
+        chunk_to_parent = mapping.load_parent_map(conn) if use_parent else {}
     finally:
         conn.close()
 
-    gold_map, unmapped = mapping.map_cases(cases, grouped)
+    if use_parent:
+        gold_map, unmapped = mapping.map_cases_to_parent(cases, grouped, chunk_to_parent)
+    else:
+        gold_map, unmapped = mapping.map_cases(cases, grouped)
     retriever = build_retriever(conf)
     k = top_k or conf.retrieval.top_k
 
@@ -103,6 +107,10 @@ def run_eval(conf, split: str = "all", top_k: int | None = None) -> dict:
         if len(gold) > 1:
             overlap_cases += 1
         hits = retriever.search(case["query"], k)
+        if use_parent and chunk_to_parent:
+            from src.split.parent import collapse
+
+            hits = collapse(hits, chunk_to_parent, k)
         ranked = [chunk_id for chunk_id, _score in hits]
         rank = metrics.first_hit_rank(ranked, gold)
         per_case.append(
@@ -128,6 +136,7 @@ def run_eval(conf, split: str = "all", top_k: int | None = None) -> dict:
         "metrics": metrics.aggregate(per_case, K_VALUES),
         "per_case": per_case,
         "elapsed_seconds": round(time.time() - started, 2),
+        "use_parent": use_parent,
         "flags": [] if retriever.ready else ["NO_MATCH"],
     }
     return result

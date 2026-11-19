@@ -4,9 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：`src/eval/bootstrap.py` 新建（配对 bootstrap + `verdict` + `percentiles`）；`tests/test_bootstrap.py` 7 例；`evals/experiments-v0.3.md` 补 T-020 区间与延迟表；`05-modules.md` 目录树补齐。
-- 实测：`.venv\Scripts\python.exe -m unittest tests.test_bootstrap` 0（7 例）；`.venv\Scripts\python.exe -m src.eval.bootstrap` 0 → R@1 +0.0125 区间 [+0.0000, +0.0375]、R@5 [0,0]、MRR [−0.0031, +0.0187]，三项 overlap → 不声明提升；延迟 p50 5,288.8 ms／p95 7,385.7 ms，超 3000 ms 超时。
-- 待确认：无阻塞项；4 个提交本地攒着。v0.3 任务已全部完成，下一步按 tasks 进 v0.3 收尾（评测接入父子/切分对比）或等你指示。
+- 改动：`src/eval/mapping.py` 增 parent 映射、`src/eval/runner.py` 增 `use_parent`、`src/cli/eval.py` 增 `--parent`；`src/split/recursive.py` 改三级切分（段→句→硬切）；`evals/experiments-v0.3.md` 补切分与父子两张对比表。
+- 实测：三切分 dev 对比 `.venv\Scripts\python.exe -m src.cli.eval --split dev --retriever hybrid --index-dir ...` 均 0 → fixed R@5 0.8875／MRR 0.6948 最优，recursive 0.6875／0.5056，sliding 0.8375／0.6065；父子 `--parent` 0 → R@5 0.8500／MRR 0.6865，略低于单层；两组均不启用。
+- 待确认：无阻塞项；6 个提交本地攒着。v0.3 任务与收尾实验已完，下一步等你定（G4 或进 v0.4）。
 
 ## 核验方写（每轮）
 
@@ -23,7 +23,7 @@
 
 ## 当前状态（开发方维护，每轮更新）
 
-- 版本：v0.2 已发布；v0.3 进行中，T-016~T-020 完成（本地待推）
+- 版本：v0.2 已发布；v0.3 任务与收尾实验完成（本地待推）
 - 门禁：G1/G2/G3 通过；CHG-001~006 已确认，001/002/003 状态行为「规格层已落地 + 剩余执行清单」
 - 权重：`.cache/models/bge-small-zh-v1.5`，指纹写入 `data/index/index-meta.json` 的 `weights_sha256`
 - 索引：全量 2704 条 512 维、5,675,789 字节（v0.1 的 34 条已重建覆盖）

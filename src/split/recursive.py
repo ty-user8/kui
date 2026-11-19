@@ -26,21 +26,36 @@ def _segments(parsed: ParsedDocument, structure: Structure) -> list[tuple[int, i
     return [(cleaned[i], cleaned[i + 1]) for i in range(len(cleaned) - 1)]
 
 
-def _units(text: str) -> list[str]:
-    """把一段文本拆成不可再分的单元（优先按段落，其次句子，最后逗号）。"""
-    if "\n" in text:
-        raw = [piece for piece in text.split("\n") if piece]
-    else:
-        raw = []
-        buffer = ""
-        for char in text:
-            buffer += char
-            if char in "。！？；":
-                raw.append(buffer)
-                buffer = ""
-        if buffer:
-            raw.append(buffer)
-    return raw
+def _sentences(text: str) -> list[str]:
+    out: list[str] = []
+    buffer = ""
+    for char in text:
+        buffer += char
+        if char in "。！？；":
+            out.append(buffer)
+            buffer = ""
+    if buffer:
+        out.append(buffer)
+    return out
+
+
+def _units(text: str, max_len: int) -> list[str]:
+    """把一段文本拆成不超过 `max_len` 的单元：先按段落，段过长再按句，单句仍过长才硬切。
+
+    早期实现只按段落拆，遇到超长段落会产出一个远超窗口的 chunk，被模型截断后语义受损。
+    """
+    pieces = [piece for piece in text.split("\n") if piece] if "\n" in text else [text]
+    units: list[str] = []
+    for piece in pieces:
+        if len(piece) <= max_len:
+            units.append(piece)
+            continue
+        for sentence in _sentences(piece):
+            if len(sentence) <= max_len:
+                units.append(sentence)
+            else:
+                units.extend(sentence[i : i + max_len] for i in range(0, len(sentence), max_len))
+    return units
 
 
 def _pack(units: list[str], chunk_size: int, overlap: int) -> list[str]:
@@ -95,7 +110,7 @@ def split_recursive(
         text = base[seg_start:seg_end]
         if not text.strip():
             continue
-        pieces = _pack(_units(text), chunk_size, overlap)
+        pieces = _pack(_units(text, chunk_size), chunk_size, overlap)
         cursor = seg_start
         for piece in pieces:
             if not piece.strip():

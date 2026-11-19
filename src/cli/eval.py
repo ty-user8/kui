@@ -93,6 +93,7 @@ def main() -> int:
         default=None,
         help="覆盖 config.paths.index_dir，用于对比不同索引（如标题注入前后）",
     )
+    parser.add_argument("--parent", action="store_true", help="命中折叠到 parent，gold 也映射到 parent")
     parser.add_argument(
         "--rerank",
         choices=("on", "off"),
@@ -146,7 +147,7 @@ def main() -> int:
 
     run_id, config_hash, cfg_string = build_run_id(conf, cases_sha, corpus_sha, doc_count)
     run_id += args.run_suffix
-    result = runner.run_eval(conf, split=args.split)
+    result = runner.run_eval(conf, split=args.split, use_parent=args.parent)
 
     run_dir = conf.paths.runs_dir / run_id
     attempt = next_attempt(run_dir)
@@ -163,6 +164,7 @@ def main() -> int:
         "unconfirmed": result["unconfirmed"],
         "overlap_cases": result["overlap_cases"],
         "retriever": "hybrid" if conf.retrieval.use_bm25 else "dense",
+        "use_parent": bool(args.parent),
         "metrics": metrics,
         "note": METRIC_NOTE,
     }

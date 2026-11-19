@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-**v0.2 已完成并发布**（2026-11-19）：G4 过门，`origin/dev` = `3ec9f67`；基线 `r5e4a62714526`（150 篇 / 2704 chunk / 100 条 / 融合，R@5 0.9000）。**v0.3 进行中**：T-016~T-020 完成。三处实验结论：标题注入不启用、rerank 区间重叠不启用、切分与父子结构保留待 v0.3 评测接入。。
+**v0.2 已完成并发布**（2026-11-19）：G4 过门，`origin/dev` = `3ec9f67`；基线 `r5e4a62714526`（150 篇 / 2704 chunk / 100 条 / 融合，R@5 0.9000）。**v0.3 任务与收尾实验完成**：T-016~T-020 + 切分/父子接入评测。三处否决不启用（标题注入、rerank、recursive/sliding 与父子结构），基线切分与默认检索链保持不变，`origin/dev` 待推。。
 
 ## Implement 进度
 
@@ -24,6 +24,7 @@
 | T-013 | `src/trace.py`、`tests/test_trace.py` | 13 个字段齐全（`run_id`~`flags`）；`excerpt` 恒为 80 码点、换行折空格；追加写用独立 `.lock` 文件 + 平台锁（POSIX `flock`／Windows `msvcrt.locking`），4 线程×25 行并发写 100 行全部可解析；自检 3 条 trace 无 `sk-` 与用户目录；单测 6 例通过 |
 | T-012 | `src/retrieve/hybrid.py`、`tests/test_hybrid.py`、`tests/__init__.py` | RRF 融合 `score = Σ 1/(k+rank)`；单测 8 例全过（单路、双路求和、排序、截断、单路缺失、双路空、同路重复、k 非正）；三条查询两路与融合均非空，前两条两路 top1 一致（`00012`／`00002`），融合 top1 分数 0.03279（两路均第 1） |
 | T-011 | `src/index/bm25_index.py` | 2704 chunk 建 BM25，体积 5,442,894 字节（存分词结果 + 参数，加载时重建 `BM25Okapi`）；jieba 分词正确（「发明专利权的期限是几年」→ 发明/专利权/的/期限/是/几年）；三条查询 BM25 与向量两路均返回非空，前两条两路 top1 一致（`00012`／`00002`）；建索引 4.4 s |
+| v0.3 收尾 | `src/eval/mapping.py`（parent 映射）、`src/eval/runner.py`（`use_parent`）、`src/cli/eval.py`（`--parent`）、`src/split/recursive.py`（超长单元切分）、`evals/experiments-v0.3.md` | 三切分接入评测：fixed 2704／R@5 0.8875／MRR 0.6948 最优，recursive 3402／0.6875／0.5056，sliding 2918／0.8375／0.6065 → **不替换基线切分**；父子结构 3090 child／1084 parent／R@5 0.8500／MRR 0.6865 → **不启用**；分组对比用 `--run-suffix` 并列保留，holdout 未参与选型 |
 | T-020 | `src/eval/bootstrap.py`、`tests/test_bootstrap.py`、`evals/experiments-v0.3.md` | 配对 bootstrap 1000 轮：R@1 差值 +0.0125 区间 [+0.0000, +0.0375]、R@5 0.0000 [0,0]、MRR +0.0052 [−0.0031, +0.0187] —— 三项均 overlap，**不声明提升、`use_rerank` 保持 false**；延迟基线 p50 5,288.8 ms／p95 7,385.7 ms，已超 3000 ms 超时，说明 CPU 上重排多数走降级；单测 7 例 |
 | T-019 | `src/retrieve/normalize.py`、`src/retrieve/rerank.py`、`tests/test_normalize.py`、`tests/test_rerank.py`、`evals/experiments-v0.3.md` | 覆盖率曲线定候选数 **N=20**（Recall@20 0.9625 达上限，25 起零增益，与 `rerank_top_n=20` 一致）；归一化：全角→半角、中文词间空白删除、幂等，5 例单测；rerank：只重排 top-N、超时降级 `FALLBACK_RERANK_TIMEOUT`、模型缺失降级 `FALLBACK_RERANK_UNAVAILABLE`、分数只做组内比较，4 例单测（含注入延迟）；端到端对比：dev 80 条 R@1 0.5500→0.5625、MRR 0.6948→0.6990、nDCG@5 0.7440→0.7470，R@3/@5 持平；幅度小，未据此启用（`use_rerank` 保持 false，待 T-020 用 bootstrap 判定） |
 | T-018 | `src/index/embedder.py`、`src/cli/build_index.py`、`src/cli/eval.py`、`evals/experiments-v0.3.md` | 标题注入实现：路径 ≤60 字（实测截断 0 条）拼在正文前，超 512 token 截尾（255 条触发）；索引 `data/index-head` 2704 条、5,675,789 字节；对比 dev 80 条：R@1 0.4750→0.4375、R@3 0.7125→0.7750、R@5 0.8375→0.8250、MRR 0.6121→0.5958，**除 R@3 外均降，不启用**；`documents.index_text_sha256` 已回置 NULL |

@@ -95,3 +95,5 @@
 - 推送：`origin/dev` 更新至 `407fe62`（v0.3 T-016），积压 0。
 - v0.3 T-018：`embedder.py` 增 `build_index_text`（路径 ≤60 字）与 `fit`（512 token 截断）；`build_index` 增 `--inject-heading`／`--out` 并回写 `index_text_sha256`；`eval` 增 `--index-dir`。实测注入后 dev R@1/R@5/MRR/nDCG 均降（仅 R@3 +6.25pt），**不启用**，结论与数据见 `evals/experiments-v0.3.md`；`index_text_sha256` 已回置 NULL。
 - 修 `build_index` 在 `--out` 为相对路径时 `relative_to` 抛错导致退出码 1 的问题。
+- v0.3 T-019（部分）：新增 `src/retrieve/normalize.py`（全角半角 + 中文词间空白删除 + 可选繁转简）与 `tests/test_normalize.py`（5 例）；新增 `src/retrieve/rerank.py`（只重排 top-N、超时/缺失双降级、分数只做组内比较）与 `tests/test_rerank.py`（4 例）。覆盖率曲线定候选数 N=20（Recall@20 0.9625 达上限），写入 `evals/experiments-v0.3.md`。
+- 繁转简需 OpenCC，venv 未装，该步跳过并置 `t2s=False`；是否引入依赖待确认。

@@ -23,3 +23,31 @@ set HF_HOME=.cache/models
 .venv\Scripts\python.exe -m src.cli.eval --split dev --retriever dense --index-dir data/index --run-suffix=-dev-nohead
 .venv\Scripts\python.exe -m src.cli.eval --split dev --retriever dense --index-dir data/index-head --run-suffix=-dev-head
 ```
+
+## T-019 覆盖率曲线（定 rerank 候选数）
+
+条件：150 篇 / 2704 chunk，`dev` 80 条，融合检索取 top-50，统计 Recall@N。
+
+| N | Recall@N | 增量 |
+| --- | --- | --- |
+| 5 | 0.8375 | — |
+| 10 | 0.9250 | +8.75pt（+7 条） |
+| 15 | 0.9500 | +2.50pt（+2 条） |
+| 20 | **0.9625** | +1.25pt（+1 条） |
+| 25 | 0.9625 | 0 |
+| 30 | 0.9625 | 0 |
+| 40 | 0.9625 | 0 |
+| 50 | 0.9625 | 0 |
+
+结论：**N = 20** —— 第一个达到 Recall 上限（0.9625）的点，之后再扩候选零增益。与 `config.yaml` 里的 `rerank_top_n: 20` 一致，无需改配置；该值现在有实测依据，不是拍脑袋定的。
+
+## T-019 查询归一化
+
+| 写法 | 归一后 |
+| --- | --- |
+| `发明专利权的期限是几年` | 同左 |
+| `发明专利权 的 期限是几年` | `发明专利权的期限是几年` |
+| `发明专利权　的　期限是几年`（全角空格） | `发明专利权的期限是几年` |
+| `ＡＢＣ　１２３` | `ABC 123` |
+
+中文词间空白属分词留白，直接删除；中英文之间的空格保留。繁转简需 OpenCC 词典，当前 venv 未装，该步跳过并置 `t2s=False`，不静默乱转。

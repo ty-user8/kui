@@ -55,7 +55,9 @@ rag/
 │   ├── __init__.py
 │   ├── test_hybrid.py           # RRF 融合单测（8 例）
 │   ├── test_trace.py            # trace 写入与 excerpt 单测（6 例）
-│   └── test_parent.py           # 父子折叠与锚点映射单测（4 例）
+│   ├── test_parent.py           # 父子折叠与锚点映射单测（4 例）
+│   ├── test_normalize.py        # 查询归一化单测（5 例）
+│   └── test_rerank.py           # 重排与降级单测（4 例）
 ├── scripts/
 │   ├── normalize_lock.py        # 规范化 requirements.lock.txt 的本地 wheel 行，打印 deps_sha256
 │   ├── download_model.py        # 从官方 API 元数据下载模型权重并按 sha256 校验

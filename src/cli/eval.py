@@ -94,6 +94,12 @@ def main() -> int:
         help="覆盖 config.paths.index_dir，用于对比不同索引（如标题注入前后）",
     )
     parser.add_argument(
+        "--rerank",
+        choices=("on", "off"),
+        default=None,
+        help="覆盖 retrieval.use_rerank",
+    )
+    parser.add_argument(
         "--run-suffix",
         default="",
         help="给 run_id 加后缀（如 -dev-dense），用于同一配置指纹下并列保留多组实验",
@@ -111,6 +117,13 @@ def main() -> int:
         import dataclasses
 
         conf = dataclasses.replace(conf, paths=dataclasses.replace(conf.paths, index_dir=pathlib.Path(args.index_dir)))
+
+    if args.rerank is not None:
+        import dataclasses
+
+        conf = dataclasses.replace(
+            conf, retrieval=dataclasses.replace(conf.retrieval, use_rerank=(args.rerank == "on"))
+        )
 
     if args.retriever is not None:
         import dataclasses

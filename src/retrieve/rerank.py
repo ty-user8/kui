@@ -100,3 +100,34 @@ class Reranker:
             (time.perf_counter() - started) * 1000,
             True,
         )
+
+
+class RerankedRetriever:
+    """把重排接在融合检索之后：先取融合 top-N 候选，再按交叉编码器分数重排取 top-k。
+
+    查询先归一化（REQ-026），命中分数替换为 rerank 分，只做组内比较；
+    降级时保留融合序并把 flag 透传，调用方可据此在 trace 里标记。
+    """
+
+    def __init__(self, base, reranker: "Reranker", texts_of, top_n: int | None = None) -> None:
+        self.base = base
+        self.reranker = reranker
+        self.texts_of = texts_of
+        self.top_n = top_n or reranker.top_n
+        self.last_flags: list[str] = []
+        self.last_candidates = 0
+
+    @property
+    def ready(self) -> bool:
+        return self.base.ready
+
+    def search(self, query: str, top_k: int = 5) -> list[tuple[str, float]]:
+        from src.retrieve.normalize import normalize_query
+
+        normalized, _info = normalize_query(query)
+        candidates = self.base.search(normalized, self.top_n)
+        texts = self.texts_of([chunk_id for chunk_id, _ in candidates])
+        result = self.reranker.rerank(normalized, candidates, texts, top_k=top_k, top_n=self.top_n)
+        self.last_flags = list(result.flags)
+        self.last_candidates = result.candidates
+        return result.hits

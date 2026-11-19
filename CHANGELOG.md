@@ -97,3 +97,5 @@
 - 修 `build_index` 在 `--out` 为相对路径时 `relative_to` 抛错导致退出码 1 的问题。
 - v0.3 T-019（部分）：新增 `src/retrieve/normalize.py`（全角半角 + 中文词间空白删除 + 可选繁转简）与 `tests/test_normalize.py`（5 例）；新增 `src/retrieve/rerank.py`（只重排 top-N、超时/缺失双降级、分数只做组内比较）与 `tests/test_rerank.py`（4 例）。覆盖率曲线定候选数 N=20（Recall@20 0.9625 达上限），写入 `evals/experiments-v0.3.md`。
 - 繁转简需 OpenCC，venv 未装，该步跳过并置 `t2s=False`；是否引入依赖待确认。
+- T-019 端到端：`bge-reranker-base` 权重落 `.cache/models/bge-reranker-base/`（safetensors 1,112,206,140 字节 + tokenizer 四件，离线加载 1.1 s）；`RerankedRetriever` 接入 runner，`eval` 增 `--rerank on|off`。dev 80 条对比：R@1 0.5500→0.5625、MRR 0.6948→0.6990、nDCG@5 0.7440→0.7470，R@3/@5 持平，幅度不足以宣称改进，`use_rerank` 保持 false。
+- `download_model.py` 增 `--only`（按文件名白名单下载），避免拉取不需要的 `onnx/model.onnx` 与 `pytorch_model.bin`。

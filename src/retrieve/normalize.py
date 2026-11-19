@@ -3,8 +3,8 @@
 只作用于 query，不改基准文本，也不产生任何偏移（`01-requirements.md` 5.3.2）；原 query 由
 trace 的 `query_raw` 保留，归一化结果写 `query_norm`（REQ-026）。
 
-繁转简依赖 OpenCC 词典，未安装时**不报错、不静默乱转**：跳过该步并把 `converted` 置 False，
-由调用方决定是否提示。这是唯一的外部可选依赖，其余两步只用标准库。
+繁转简依赖 OpenCC 词典。本项目语料与 query 均为简体、无繁体来源，按 D-023 不引入该依赖：
+分支保留但不启用（`t2s=False`），不报错也不静默乱转；将来接入繁体语料时再装上并打开开关即可。
 """
 
 from __future__ import annotations

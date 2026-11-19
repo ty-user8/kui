@@ -51,3 +51,19 @@ set HF_HOME=.cache/models
 | `ＡＢＣ　１２３` | `ABC 123` |
 
 中文词间空白属分词留白，直接删除；中英文之间的空格保留。繁转简需 OpenCC 词典，当前 venv 未装，该步跳过并置 `t2s=False`，不静默乱转。
+
+## T-019 rerank 前后对比（真实模型）
+
+模型：`BAAI/bge-reranker-base`，权重 1,112,206,140 字节（safetensors）+ tokenizer 文件，落 `.cache/models/bge-reranker-base/`；加载 1.1 s（`HF_HUB_OFFLINE=1`，CPU）。
+条件：`dev` 80 条，融合检索 + 候选 N=20。
+
+| 组 | `run_id` | Recall@1 | Recall@3 | Recall@5 | MRR | nDCG@5 |
+| --- | --- | --- | --- | --- | --- | --- |
+| A 融合，无 rerank | `r6c23283f2577-dev-hybrid` | 0.5500 | 0.8500 | 0.8875 | 0.6948 | 0.7440 |
+| B 融合 + rerank | `r6c23283f2577-dev-rerank` | **0.5625** | 0.8500 | 0.8875 | **0.6990** | **0.7470** |
+
+差值（B − A）：Recall@1 +1.25pt、MRR +0.42pt、nDCG@5 +0.30pt，Recall@3/@5 持平。
+
+判读：提升幅度小，**不足以据此宣称改进**——按 REQ-035 需 bootstrap 区间且不得在有重叠时声明提升（T-020 处理）。当前 `use_rerank` 保持 `false`。
+
+原因假设：候选 N=20 已被融合排得较准，可改判的空间本来就小；此外 chunk 是 512 字固定窗口，一个 chunk 混装 2~4 条，rerank 读到的文本里包含大量与 query 无关的条款，削弱了它对目标条的判断力。

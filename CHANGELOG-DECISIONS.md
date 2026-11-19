@@ -165,3 +165,10 @@
 - **校验**：`model.safetensors` 95,827,648 字节、sha256 `354763b9b1357bc9…` 与 API 元数据一致；`HF_HUB_OFFLINE=1` 下 `SentenceTransformer` 可加载并编码，维度 512、L2 范数 1.0。
 - **代价**：模型目录不含 huggingface 的 refs/snapshots 结构，`sentence-transformers` 需以本地路径加载；`run_id` 仍记仓库名与 revision，不记本地路径。
 - **版本**：v0.1。
+
+## D-023 查询归一化不引入 OpenCC：繁转简分支不适用
+
+- **决策**：`normalize_query` 只做 NFKC（全角半角统一）与空白折叠（中文词间空白删除），繁转简分支保留代码位但默认跳过（`t2s=False`），不安装 OpenCC。
+- **理由**：语料 150 篇与 100 条 query 全部为简体来源，库内无繁体文本；为不存在的场景引入约 40MB 词典依赖，违反项目依赖边界（constitution 依赖红线）。REQ-026 的「简繁」分支在本语料下不适用，而非未实现。
+- **保留位的原因**：若未来接入繁体语料，只需装 OpenCC 并置 `enable_t2s=True`，`normalize_query` 已有实现与返回标志，不需要改调用方。
+- **版本**：v0.3。

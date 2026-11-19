@@ -124,6 +124,7 @@ def main() -> int:
     parser.add_argument("--dest", default=None, help="目标目录，默认 $HF_HOME/<模型名>")
     parser.add_argument("--workers", type=int, default=6, help="大文件的并行分段数")
     parser.add_argument("--skip", action="append", default=[], help="跳过指定文件名，可重复")
+    parser.add_argument("--only", default=None, help="只下载指定文件，逗号分隔（如 tokenizer.json,vocab.txt）")
     args = parser.parse_args()
 
     dest = pathlib.Path(args.dest) if args.dest else pathlib.Path(
@@ -138,6 +139,14 @@ def main() -> int:
 
     started = time.time()
     files = [item for item in fetch_files(args.repo, session) if item["name"] not in args.skip]
+    if args.only:
+        wanted = {name.strip() for name in args.only.split(",") if name.strip()}
+        known = {item["name"] for item in files}
+        unknown = wanted - known
+        if unknown:
+            print("仓库中没有这些文件：%s" % ", ".join(sorted(unknown)))
+            return 2
+        files = [item for item in files if item["name"] in wanted]
     ok = failed = 0
     for meta in files:
         target = dest / meta["name"]

@@ -22,20 +22,46 @@ K_VALUES = (1, 3, 5)
 
 
 def build_retriever(conf):
-    """按 `retrieval.use_bm25` 选单路或融合；BM25 索引缺失时退回单路（REQ-024 降级）。"""
+    """按配置组装检索链：单路 / 融合 / 融合+重排；任一环节缺失按降级路径退回。"""
     dense = DenseRetriever(conf)
-    if not conf.retrieval.use_bm25:
-        return dense
-    try:
-        bundle = bm25_index.load(conf.paths.index_dir)
-    except FileNotFoundError:
-        return dense
-    return HybridRetriever(
-        dense=dense,
-        bm25=bundle,
-        rrf_k=conf.retrieval.rrf_k,
-        candidate_k=conf.retrieval.candidate_k,
-    )
+    base = dense
+    if conf.retrieval.use_bm25:
+        try:
+            base = HybridRetriever(
+                dense=dense,
+                bm25=bm25_index.load(conf.paths.index_dir),
+                rrf_k=conf.retrieval.rrf_k,
+                candidate_k=conf.retrieval.candidate_k,
+            )
+        except FileNotFoundError:
+            base = dense
+
+    if not conf.retrieval.use_rerank:
+        return base
+
+    from src.retrieve.rerank import RerankedRetriever, Reranker
+
+    cache: dict[str, str] = {}
+
+    def texts_of(chunk_ids: list[str]) -> dict[str, str]:
+        missing = [chunk_id for chunk_id in chunk_ids if chunk_id not in cache]
+        if missing:
+            conn = connect(conf.require_db_path())
+            try:
+                placeholders = ", ".join("?" for _ in missing)
+                rows = conn.execute(
+                    "SELECT chunk_id, text FROM chunks WHERE chunk_id IN (%s)" % placeholders, tuple(missing)
+                ).fetchall()
+                for row in rows:
+                    cache[row["chunk_id"]] = row["text"]
+            finally:
+                conn.close()
+        return {chunk_id: cache.get(chunk_id, "") for chunk_id in chunk_ids}
+
+    reranker = Reranker(conf)
+    if not reranker.ready:
+        return base
+    return RerankedRetriever(base, reranker, texts_of, conf.retrieval.rerank_top_n)
 
 
 def load_cases(path: pathlib.Path) -> list[dict]:

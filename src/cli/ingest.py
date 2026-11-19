@@ -23,10 +23,13 @@ from src.config import ConfigError, load  # noqa: E402
 from src.parse.anchor import build_structure  # noqa: E402
 from src.parse.docx_reader import EntryError, check_entry, read_docx  # noqa: E402
 from src.split.fixed import split_fixed  # noqa: E402
+from src.split.recursive import split_recursive  # noqa: E402
+from src.split.sliding import split_sliding  # noqa: E402
 from src.store import dao  # noqa: E402
 from src.store.db import apply_migrations, connect, transaction  # noqa: E402
 
 SOURCE_FORMAT = "docx"
+SPLITTERS = {"fixed": split_fixed, "recursive": split_recursive, "sliding": split_sliding}
 
 
 def load_manifest(path: pathlib.Path) -> dict[str, dict]:
@@ -44,7 +47,8 @@ def build_document(conf, path: pathlib.Path, record: dict) -> tuple[dict, list[d
     """解析并切分单篇文档，返回（documents 行, chunks 行）。"""
     parsed = read_docx(path)
     structure = build_structure(parsed)
-    chunks = split_fixed(
+    splitter = SPLITTERS[conf.split.strategy]
+    chunks = splitter(
         parsed,
         structure,
         record["doc_id"],
@@ -89,6 +93,12 @@ def build_document(conf, path: pathlib.Path, record: dict) -> tuple[dict, list[d
 def main() -> int:
     parser = argparse.ArgumentParser(description="按固定长度切分并写入 SQLite")
     parser.add_argument("--source", choices=("v01_subset", "full"), default="v01_subset")
+    parser.add_argument(
+        "--strategy",
+        choices=tuple(SPLITTERS),
+        default=None,
+        help="覆盖 config 的 split.strategy：fixed / recursive / sliding",
+    )
     args = parser.parse_args()
 
     try:
@@ -97,6 +107,11 @@ def main() -> int:
     except ConfigError as exc:
         print("配置错误: %s" % exc)
         return 2
+
+    if args.strategy is not None:
+        import dataclasses
+
+        conf = dataclasses.replace(conf, split=dataclasses.replace(conf.split, strategy=args.strategy))
 
     manifest = load_manifest(conf.corpus.manifest)
     files = pick_files(conf, args.source)

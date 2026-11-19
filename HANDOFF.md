@@ -4,9 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：`PROGRESS.md` 写推送记录（`origin/dev` = `3ec9f67`、积压 0）、`cases.csv` 快照更新为 44715 / `7f94fe58a3c8e8d7`、当前阶段标 v0.2 已发布；`HANDOFF.md` 同步当前状态。
-- 实测：`git ls-remote --heads origin` 仅 `refs/heads/dev` = `3ec9f672…`；`origin/dev..dev` 积压 0；工作区干净；`fill_anchors --check` 0（100 条逐字一致）。
-- 待确认：本轮收尾提交**未推**，是否再推 `dev` 等你点头；之后按你指示直接进 v0.3 T-016。
+- 改动：`PROGRESS.md` 写 v0.2 推送记录（`origin/dev` = `3ec9f67`）、`cases.csv` 快照 44715 / `7f94fe58a3c8e8d7`、v0.2 标已发布；`HANDOFF.md` 同步；v0.3 T-016 新增 `src/split/recursive.py`、`src/split/sliding.py`，`ingest` 增 `--strategy`，`05-modules.md` 目录树补齐。
+- 实测：`git ls-remote --heads origin` 仅 `refs/heads/dev` = `3ec9f672…`、积压 0；`.venv\Scripts\python.exe -m src.cli.ingest --source v01_subset --strategy {fixed,recursive,sliding}` 三次均 0，chunk 数 34 / 43 / 35；`fill_anchors --check` 0。
+- 待确认：本轮两次本地提交**未推**（`origin/dev..dev` = 2），是否再推 `dev` 等你点头。
 
 ## 核验方写（每轮）
 
@@ -23,7 +23,7 @@
 
 ## 当前状态（开发方维护，每轮更新）
 
-- 版本：v0.2 已发布（G4 过门、`origin/dev` = `3ec9f67`）；下一步 v0.3 从 T-016 起
+- 版本：v0.2 已发布（`origin/dev` = `3ec9f67`）；v0.3 进行中，T-016 完成
 - 门禁：G1/G2/G3 通过；CHG-001~006 已确认，001/002/003 状态行为「规格层已落地 + 剩余执行清单」
 - 权重：`.cache/models/bge-small-zh-v1.5`，指纹写入 `data/index/index-meta.json` 的 `weights_sha256`
 - 索引：全量 2704 条 512 维、5,675,789 字节（v0.1 的 34 条已重建覆盖）
@@ -36,7 +36,7 @@
 
 ## 待确认（开发方写）
 
-- 基线 `r5e4a62714526`（CHG-007）；v0.2 完成并推送，积压 0
+- 基线 `r5e4a62714526`（CHG-007）；v0.2 已推送；v0.3 T-016 完成，本地积压待推
 
 ## 结论（核验方写）
 

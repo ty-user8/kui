@@ -91,3 +91,5 @@
 - `CHG-007` 确认并执行：基线由 `r98aa795a93cf` 换为 `r5e4a62714526`，`PROGRESS.md` 新增「当前基线」段；`evals/experiments-v0.2.md` D 行 holdout 数由 14 订正为 20（指标不变）；`12-release-checklist.md` 补 v0.2 专项 9 项并勾选通用项 C-01/C-03/C-04/C-05/C-08。
 - G4 材料就绪：生效依据、`eval` 输出、回归对比、自检（`compileall`／14 例单测／`--check`／复现字节一致）、检查单、附录 C 文本扫描零命中。
 - v0.3 T-016：新增 `src/split/recursive.py`（按标题分段 + 段内句级合并）与 `src/split/sliding.py`（句子滑窗，边界落在句末）；`ingest` 增 `--strategy {fixed,recursive,sliding}`。v0.1 两篇上三策略 chunk 数 34 / 43 / 35，均入库成功（临时库验证，主库未动）。
+- v0.3 T-017：新增 `src/split/parent.py`（parent 按条聚合、child 为 parent 内小窗口、`collapse` 折叠去重、`parent_at` 锚点映射到 parent）；`Chunk` 增 `parent_id`，`dao.replace_document` 写 `parents` 表，`ingest` 增 `--parent-child`。两篇上 parent 14 / child 39，索引只含 child，20 个 child 命中折叠为 5 个 parent，v0.1 的 30 条锚点全部映射到 parent；单测 4 例。
+- 推送：`origin/dev` 更新至 `407fe62`（v0.3 T-016），积压 0。

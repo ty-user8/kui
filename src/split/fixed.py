@@ -25,6 +25,7 @@ class Chunk:
     article_no: str | None
     heading_path: str
     n_chars: int
+    parent_id: str | None = None
 
 
 def _paragraph_at(metas: list[ParagraphMeta], starts: list[int], position: int) -> ParagraphMeta | None:

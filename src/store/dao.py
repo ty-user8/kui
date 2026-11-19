@@ -27,20 +27,40 @@ DOCUMENT_COLUMNS = (
 )
 
 
-def replace_document(conn: sqlite3.Connection, document: dict, chunks: list[dict]) -> None:
-    """写入一篇文档及其 chunk；已存在则先清空旧 chunk 与旧行。"""
+def replace_document(conn: sqlite3.Connection, document: dict, chunks: list[dict], parents: list[dict] | None = None) -> None:
+    """写入一篇文档及其 parent / chunk；已存在则先清空旧行。"""
     conn.execute("DELETE FROM chunks WHERE doc_id = ?", (document["doc_id"],))
+    conn.execute("DELETE FROM parents WHERE doc_id = ?", (document["doc_id"],))
     conn.execute("DELETE FROM documents WHERE doc_id = ?", (document["doc_id"],))
     placeholders = ", ".join("?" for _ in DOCUMENT_COLUMNS)
     conn.execute(
         "INSERT INTO documents (%s) VALUES (%s)" % (", ".join(DOCUMENT_COLUMNS), placeholders),
         tuple(document[column] for column in DOCUMENT_COLUMNS),
     )
+    if parents:
+        conn.executemany(
+            "INSERT INTO parents (parent_id, doc_id, seq, text, char_start, char_end, article_no,"
+            " heading_path, n_chars) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                (
+                    item["parent_id"],
+                    item["doc_id"],
+                    item["seq"],
+                    item["text"],
+                    item["char_start"],
+                    item["char_end"],
+                    item["article_no"],
+                    item["heading_path"],
+                    item["n_chars"],
+                )
+                for item in parents
+            ],
+        )
     if chunks:
         conn.executemany(
             "INSERT INTO chunks (chunk_id, doc_id, seq, text, char_start, char_end, article_no,"
             " heading_path, parent_id, source_format, n_chars)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)",
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 (
                     chunk["chunk_id"],
@@ -51,6 +71,7 @@ def replace_document(conn: sqlite3.Connection, document: dict, chunks: list[dict
                     chunk["char_end"],
                     chunk["article_no"],
                     chunk["heading_path"],
+                    chunk.get("parent_id"),
                     chunk["source_format"],
                     chunk["n_chars"],
                 )
@@ -101,3 +122,12 @@ def upsert_run(conn: sqlite3.Connection, row: dict) -> None:
         % (", ".join(columns), placeholders, updates),
         tuple(row[column] for column in columns),
     )
+
+
+def count_parents(conn: sqlite3.Connection) -> int:
+    return int(conn.execute("SELECT COUNT(*) FROM parents").fetchone()[0])
+
+
+def parent_of(conn: sqlite3.Connection, chunk_id: str) -> str | None:
+    row = conn.execute("SELECT parent_id FROM chunks WHERE chunk_id = ?", (chunk_id,)).fetchone()
+    return row["parent_id"] if row else None

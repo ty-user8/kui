@@ -23,6 +23,7 @@ from src.config import ConfigError, load  # noqa: E402
 from src.parse.anchor import build_structure  # noqa: E402
 from src.parse.docx_reader import EntryError, check_entry, read_docx  # noqa: E402
 from src.split.fixed import split_fixed  # noqa: E402
+from src.split.parent import build_children, build_parents  # noqa: E402
 from src.split.recursive import split_recursive  # noqa: E402
 from src.split.sliding import split_sliding  # noqa: E402
 from src.store import dao  # noqa: E402
@@ -43,18 +44,37 @@ def pick_files(conf, source: str) -> list[pathlib.Path]:
     return sorted(conf.corpus.full_dir.glob("*.docx"))
 
 
-def build_document(conf, path: pathlib.Path, record: dict) -> tuple[dict, list[dict]]:
+def build_document(conf, path: pathlib.Path, record: dict, parent_child: bool = False) -> tuple[dict, list[dict], list[dict]]:
     """解析并切分单篇文档，返回（documents 行, chunks 行）。"""
     parsed = read_docx(path)
     structure = build_structure(parsed)
-    splitter = SPLITTERS[conf.split.strategy]
-    chunks = splitter(
-        parsed,
-        structure,
-        record["doc_id"],
-        conf.split.chunk_size,
-        conf.split.overlap,
-    )
+    parent_rows: list[dict] = []
+    if parent_child:
+        parents = build_parents(parsed, structure, record["doc_id"])
+        chunks = build_children(parents, record["doc_id"], conf.split.chunk_size, conf.split.overlap)
+        parent_rows = [
+            {
+                "parent_id": item.parent_id,
+                "doc_id": item.doc_id,
+                "seq": item.seq,
+                "text": item.text,
+                "char_start": item.char_start,
+                "char_end": item.char_end,
+                "article_no": item.article_no,
+                "heading_path": item.heading_path,
+                "n_chars": item.n_chars,
+            }
+            for item in parents
+        ]
+    else:
+        splitter = SPLITTERS[conf.split.strategy]
+        chunks = splitter(
+            parsed,
+            structure,
+            record["doc_id"],
+            conf.split.chunk_size,
+            conf.split.overlap,
+        )
     document = {
         "doc_id": record["doc_id"],
         "file_name": path.name,
@@ -84,15 +104,17 @@ def build_document(conf, path: pathlib.Path, record: dict) -> tuple[dict, list[d
             "heading_path": chunk.heading_path,
             "source_format": SOURCE_FORMAT,
             "n_chars": chunk.n_chars,
+            "parent_id": chunk.parent_id,
         }
         for chunk in chunks
     ]
-    return document, chunk_rows
+    return document, chunk_rows, parent_rows
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="按固定长度切分并写入 SQLite")
     parser.add_argument("--source", choices=("v01_subset", "full"), default="v01_subset")
+    parser.add_argument("--parent-child", action="store_true", help="按父子结构入库：parent 聚合、child 建索引")
     parser.add_argument(
         "--strategy",
         choices=tuple(SPLITTERS),
@@ -128,7 +150,7 @@ def main() -> int:
             continue
         try:
             check_entry(path, conf.ingest.max_file_mb, conf.ingest.max_unpacked_mb)
-            planned.append(build_document(conf, path, record))
+            planned.append(build_document(conf, path, record, parent_child=args.parent_child))
         except EntryError as exc:
             failures.append((path.name, exc.code))
 
@@ -144,10 +166,11 @@ def main() -> int:
     try:
         apply_migrations(conn, conf.paths.migrations_dir)
         with transaction(conn):
-            for document, chunk_rows in planned:
-                dao.replace_document(conn, document, chunk_rows)
+            for document, chunk_rows, parent_rows in planned:
+                dao.replace_document(conn, document, chunk_rows, parent_rows)
         documents = dao.count_documents(conn)
         chunks = dao.count_chunks(conn)
+        parents = dao.count_parents(conn)
         formats = dao.format_sources(conn)
     finally:
         conn.close()
@@ -159,7 +182,10 @@ def main() -> int:
         print("索引中存在非 docx 记录：%s" % formats)
         return 5
 
-    print("入库完成：documents=%d、chunks=%d、source_format=%s、数据库=%s" % (documents, chunks, formats[0], db_path))
+    print(
+        "入库完成：documents=%d、chunks=%d、parents=%d、source_format=%s、数据库=%s"
+        % (documents, chunks, parents, formats[0], db_path)
+    )
     return 0
 
 

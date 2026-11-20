@@ -5,7 +5,7 @@
 ## 开发方写（每轮三行）
 
 - 改动：`CHG-012` 改口径——`constitution` 第 2 条与 `10-security` 改为「密钥值只走环境变量，模型名与接口地址可写 `config.yaml`（非密钥）」；技术方案第 102 行原文未动，差异按 `CHG-001` 先例由本单 + `D-024` 追溯；`config.yaml` 的 `llm` 加 `model_name: DeepSeek-V4.1-Flash-1017`／`base_url: https://api.deepseek.com`，三个 `*_env` 保留作覆盖；`config.py`／`ask.py` 按「环境变量覆盖配置字面值」取值，key 仍只读 `RAG_LLM_API_KEY`。
-- 实测：单测 **124 例 OK**（121 + 3 条新增：字面值生效／env 覆盖 model／env 覆盖 base_url）；配置加载读出 `model_name=DeepSeek-V4.1-Flash-1017`、`base_url=https://api.deepseek.com`；改 `config.yaml` 后复跑评测 `run_id` 仍 `r31a95a0e1de6`、六项 0.5600／0.8600／0.9000／0.7045／0.7543／0.9000 逐位不变；`constitution.md` 新指纹 10844 / `72663e47c75dfd11` 已回填快照表。
+- 实测：单测 **124 例 OK**（121 + 3 条新增：字面值生效／env 覆盖 model／env 覆盖 base_url）；配置加载读出 `model_name=DeepSeek-V4.1-Flash-1017`、`base_url=https://api.deepseek.com`；改 `config.yaml` 后复跑评测 `run_id` 仍 `r31a95a0e1de6`、六项 0.5600／0.8600／0.9000／0.7045／0.7543／0.9000 逐位不变；`constitution.md` 新指纹 10844 / `72663e47c75dfd11` 已回填快照表；CI 冷跑 run `44764582340`（5m41s）14 步全绿（索引重建 4m35s，其余缓存命中）。
 - 待确认：`RAG_LLM_API_KEY` 仍不在本机环境里，**`V05-09` 保持「未验证」**——key 到位后我跑一次完整 200 路径，记录模型名／耗时／引用校验结果再转「通过」；`config.yaml` 变更使 CI 的 `data` 缓存键失效，下一次运行为冷跑（多 2~3 分钟）。
 
 ## 核验方写（每轮）

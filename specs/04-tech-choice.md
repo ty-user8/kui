@@ -41,9 +41,9 @@
 | `faiss-cpu` | ≥1.8 | 向量索引 | 30MB | v0.1 | 已装 1.16.0 |
 | `jieba` | ≥0.42 | 中文分词 | 20MB | v0.2 | 已装 0.42.1（源码包构建） |
 | `rank_bm25` | ≥0.2 | 稀疏检索 | <1MB | v0.2 | 已装 0.2.2 |
-| `fastapi` + `uvicorn` | ≥0.110 / ≥0.30 | HTTP 接口 | 30MB | v0.4 | 待装 |
+| `fastapi` + `uvicorn` | ≥0.110 / ≥0.30 | HTTP 接口 | 30MB | v0.4 | 已装 0.165.0 / 0.54.0（starlette 1.10.0） |
 | `streamlit` | ≥1.35 | 演示页 | 200MB | v0.5 | 已装 1.67.0（连带 pandas 3.1.1 / pyarrow 26.0.1 / altair 6.3.0） |
-| `openai` | ≥1.0 | 云端 LLM 客户端 | 5MB | v0.5 | 待装（venv 内；工具解释器已有的不计） |
+| `openai` | ≥1.0 | 云端 LLM 客户端 | 5MB | v0.5 | 已装 3.57.0（仅 `/ask` 用，`eval` 与 CI 不调用） |
 
 模型权重不通过 pip 安装，由 `HF_HOME=.cache/models` 首次加载时下载并缓存：
 

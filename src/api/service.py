@@ -24,10 +24,12 @@ from src.cli.eval import METRIC_ORDER, build_run_id, sha256_file
 from src.cli.ingest import IngestAborted, run_ingest
 from src.config import ConfigError
 from src.eval import runner
+from src.generate import ask as generate_ask
 from src.retrieve import filtering
 from src.store.db import connect
 from src.trace import TraceWriter, build_record, read_records
 
+PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[2]
 MAX_TOP_K = 50
 TRACE_LIMIT_MAX = 500
 SPLITS = ("all", "dev", "holdout")
@@ -235,6 +237,52 @@ def search(conf, query: str, top_k: int | None = None, filters: dict | None = No
         "flags": flags,
         "results": results,
         "latency_ms": latency["total_ms"],
+    }
+
+
+def load_chunk_texts(conf, chunk_ids: list[str]) -> dict[str, str]:
+    """取命中片段正文，供拼 Prompt；一次查完，不逐条往返。"""
+    if not chunk_ids:
+        return {}
+    conn = connect(conf.require_db_path())
+    try:
+        placeholders = ", ".join("?" for _ in chunk_ids)
+        rows = conn.execute(
+            "SELECT chunk_id, text FROM chunks WHERE chunk_id IN (%s)" % placeholders, tuple(chunk_ids)
+        ).fetchall()
+    finally:
+        conn.close()
+    return {row["chunk_id"]: row["text"] for row in rows}
+
+
+def answer(conf, query: str, top_k: int | None = None, client=None) -> dict:
+    """`/ask`：检索 → 拼 Prompt → 生成 → 引用校验。
+
+    检索这一步**不写 trace**（`write_trace=False`）：`/ask` 不参与指标与失败归因（REQ-051），
+    混进 `trace.jsonl` 会让按 `run_id` 做的检索分析多出无 gold 的条目。
+    """
+    k = validate_top_k(top_k, conf.retrieval.top_k)
+    retrieval = search(conf, query, k, write_trace=False)
+    hits = retrieval["results"]
+    texts = load_chunk_texts(conf, [hit["chunk_id"] for hit in hits])
+    try:
+        result = generate_ask.ask(conf, query.strip(), hits, texts, client=client, root=PROJECT_ROOT)
+    except generate_ask.AskError as exc:
+        raise ApiError(exc.code, exc.message) from exc
+    return {
+        "answer": result.answer,
+        "citations": result.citations,
+        "citation_valid": result.citation_valid,
+        "retrieval": {
+            "run_id": retrieval["run_id"],
+            "reason": retrieval["reason"],
+            "flags": retrieval["flags"],
+            "results": retrieval["results"],
+        },
+        "reason": result.reason,
+        "model": result.model,
+        "prompt_version": result.prompt_version,
+        "elapsed_ms": result.elapsed_ms,
     }
 
 

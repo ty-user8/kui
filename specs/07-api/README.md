@@ -89,6 +89,15 @@ v0.4 起提供 4 个 HTTP 接口，v0.5 追加 `/ask`。全部 JSON 进出，字
 
 - 超时 30 秒返回 200 + `retrieval` 完整、`answer` 为空、`reason="ASK_TIMEOUT"`（REQ-049）。
 - 引用越界时 `citation_valid=false` 并标 `CITATION_INVALID`（REQ-050），不丢弃答案。
+- 检索无命中时**不调用模型**，直接 `answer=""`、`reason="NO_MATCH"`，避免模型凭空作答。
+- `RAG_LLM_API_KEY` 或 `RAG_LLM_MODEL` 缺失返回 500 `CONFIG_MISSING_KEY`（REQ-052），不降级、不伪造。
+- `/ask` 的检索**不写 trace**，也不进指标与 CI（REQ-051）；`model` 与 `prompt_version` 随响应返回，不进 `run_id`。
+
+### `/ask` 的验证状态（如实记录）
+
+`/ask` 的 200 路径**尚未用真实模型跑过**：开发机没有 `RAG_LLM_API_KEY`。已验证的是——引用校验、超时熔断、配额、缺 key 报错、无命中不调模型，以及「真实索引 + 假客户端」的响应拼装；这些都由单测与服务层覆盖。接上真 key 后需完整跑一次并补记录，才算这一条链路验证完毕。
+
+边界不变：`/ask` 不进任何指标、不进 CI 回归，也不影响 `run_id` 与基线。
 
 ## 3. 错误码表
 

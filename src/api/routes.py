@@ -51,6 +51,13 @@ class EvalRequest(BaseModel):
     split: Literal["all", "dev", "holdout"] = "all"
 
 
+class AskRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field(min_length=1)
+    top_k: int | None = Field(default=None, ge=1, le=service.MAX_TOP_K)
+
+
 class IngestRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -70,6 +77,12 @@ def post_eval(payload: EvalRequest | None = None) -> dict:
     conf = current_config()
     split = payload.split if payload else "all"
     return service.eval_metrics(conf, split)
+
+
+@router.post("/ask")
+def post_ask(payload: AskRequest) -> dict:
+    conf = current_config()
+    return service.answer(conf, payload.query, payload.top_k)
 
 
 @router.post("/ingest")

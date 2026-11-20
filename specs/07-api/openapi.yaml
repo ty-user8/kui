@@ -282,6 +282,7 @@ components:
       properties:
         answer:
           type: string
+          description: 超时或无命中时为空串，不伪造答案
         citations:
           type: array
           items:
@@ -293,7 +294,15 @@ components:
         reason:
           type: string
           nullable: true
-          enum: [null, ASK_TIMEOUT, CITATION_INVALID]
+          enum: [null, ASK_TIMEOUT, CITATION_INVALID, NO_MATCH]
+        model:
+          type: string
+          description: 本次调用的模型名（来自 `RAG_LLM_MODEL`），不进 `run_id`
+        prompt_version:
+          type: string
+          description: Prompt 版本号，如 `ask.system.v1`；写入调用日志便于复盘
+        elapsed_ms:
+          type: number
     Error:
       type: object
       required: [code, message]

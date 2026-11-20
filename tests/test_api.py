@@ -218,7 +218,7 @@ class TestAppWiring(unittest.TestCase):
         from src.api.main import app
 
         paths = set(app.openapi()["paths"])
-        self.assertEqual(paths, {"/search", "/eval", "/ingest", "/trace"})
+        self.assertEqual(paths, {"/search", "/eval", "/ingest", "/trace", "/ask"})
         schema = json.dumps(app.openapi(), ensure_ascii=False)
         for forbidden in ("securitySchemes", "bearerAuth", "apiKey"):
             self.assertNotIn(forbidden, schema)

@@ -69,7 +69,9 @@ rag/
 │   ├── test_api.py              # 接口层单测（23 例）
 │   ├── test_import_traces.py    # trace 导入单测（9 例）
 │   ├── test_ci_check.py         # CI 回归判定单测（10 例）
-│   └── test_ui_view.py          # 页面纯函数单测（11 例）
+│   ├── test_ui_view.py          # 页面纯函数单测（11 例）
+│   ├── test_citation.py         # 引用抽取与越界判定单测（8 例）
+│   └── test_ask.py             # 生成层单测（13 例，假客户端）
 ├── scripts/
 │   ├── normalize_lock.py        # 规范化 requirements.lock.txt 的本地 wheel 行，打印 deps_sha256
 │   ├── download_model.py        # 从官方 API 元数据下载模型权重并按 sha256 校验

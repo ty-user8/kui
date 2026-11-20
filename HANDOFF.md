@@ -4,9 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：`PROGRESS.md` 写 v0.4 推送记录（`origin/dev` = `fd509a8`、积压 0）与「v0.4 已完成并发布」，第 9 行口径统一为「属 v0.5、提前实施」；`HANDOFF.md` 同步当前状态。
-- 实测：`git ls-remote --heads origin` 仅 `refs/heads/dev` = `fd509a8`；`origin/dev..dev` 积压 0；工作区干净；`main` 本地仍 `a9ee1af`、远端无 `main`。
-- 待确认：无阻塞；V04-12 保持未验证。下一步 T-027（`/ask` 生成层与引用校验）。
+- 改动：新增 `src/generate/{ask,citation}.py`、两份 Prompt、`tests/test_{ask,citation}.py`（21 例）、`POST /ask` 与 `service.answer`；新增 `evals/badcases-v0.5.md`（44 条归因、20 条代表案例）与 `data/badcases-2026-11-20.json`；`07-api/README`、`08-prompts/README` 明写 `/ask` 真实模型未跑过；`openai 3.57.0` 已装。
+- 实测：HTTP `/ask` 无 key → 500 `CONFIG_MISSING_KEY`、空 query／`top_k=99` → 400、`trace.jsonl` 10→10 行未写；`runner.run_eval(all)` → 44 条 `hit_rank != 1`（A 8／B 31／C 5，29 条答案在 top-5 某块）；`unittest discover` 121 例全过。
+- 待确认：`/ask` 真实 key 一次真跑待补；本地积压 1 个提交，等 paused 点推 `dev`。下一步 T-029（README、架构图、冒烟脚本）。
 
 ## 核验方写（每轮）
 
@@ -23,7 +23,7 @@
 
 ## 当前状态（开发方维护，每轮更新）
 
-- 版本：v0.4 已发布（G4 过门，`origin/dev` = `fd509a8`）；v0.5 进行中（T-026 单页已完成，T-027 进行中）
+- 版本：v0.4 已发布（`origin/dev` = `fd509a8`）；v0.5 进行中，T-026／T-027 完成（本地待推）
 - 门禁：G1/G2/G3 通过；CHG-001~006 已确认，001/002/003 状态行为「规格层已落地 + 剩余执行清单」
 - 权重：`.cache/models/bge-small-zh-v1.5`，指纹写入 `data/index/index-meta.json` 的 `weights_sha256`
 - 索引：全量 2704 条 512 维、5,675,789 字节（v0.1 的 34 条已重建覆盖）

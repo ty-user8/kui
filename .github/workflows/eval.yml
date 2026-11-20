@@ -1,0 +1,105 @@
+name: eval-regression
+
+# REQ-036：CI 跑评测的判定顺序 —— 复现一致 → run_id 未变 → 指标无退化。
+# 判定逻辑在 scripts/ci_check.py（本地可跑同一份），workflow 只负责把环境与缓存准备好。
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: eval-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      RAG_DB_PATH: data/rag.db
+      HF_HOME: .cache/models
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    steps:
+      - name: 取代码
+        uses: actions/checkout@v4
+
+      - name: 准备 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.lock.txt
+
+      # 缓存整个 venv：命中即跳过安装，torch（约 800MB）不必每次重装
+      - name: 恢复虚拟环境
+        id: venv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('requirements.lock.txt') }}
+
+      - name: 安装依赖（仅缓存未命中）
+        if: steps.venv.outputs.cache-hit != 'true'
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          # torch 必须走 CPU 索引：PyPI 上的同名版本是 CUDA 包（见 requirements.txt 顶部说明）
+          .venv/bin/python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.15.0+cpu
+          grep -v '^torch' requirements.lock.txt > /tmp/requirements-no-torch.txt
+          .venv/bin/python -m pip install -r /tmp/requirements-no-torch.txt
+
+      - name: 打印环境
+        run: |
+          .venv/bin/python -V
+          .venv/bin/python -c "import torch, faiss, sentence_transformers; print('torch', torch.__version__, '| faiss', faiss.__version__)"
+
+      # 权重 96MB，不进仓库；缓存键用模型名固定，换模型时需手动改这个键
+      - name: 恢复模型权重
+        id: models
+        uses: actions/cache@v4
+        with:
+          path: .cache/models
+          key: models-bge-small-zh-v1.5
+
+      - name: 下载模型权重（仅缓存未命中）
+        if: steps.models.outputs.cache-hit != 'true'
+        run: .venv/bin/python scripts/download_model.py --repo BAAI/bge-small-zh-v1.5
+
+      # 向量索引与库按「语料清单 + 用例 + 配置」做键：三者任一变即重建，否则纯计算跑评测
+      - name: 恢复索引与库
+        id: data
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/index
+            data/rag.db
+          key: data-${{ hashFiles('corpus/metadata/manifest.json', 'evals/cases.csv', 'config.yaml') }}
+
+      - name: 建索引（仅缓存未命中）
+        if: steps.data.outputs.cache-hit != 'true'
+        run: |
+          .venv/bin/python -m src.cli.ingest --source full
+          .venv/bin/python -m src.cli.build_index
+          .venv/bin/python -m src.index.bm25_index
+
+      - name: 单元测试
+        run: .venv/bin/python -m unittest discover -s tests -t . -v
+
+      - name: 回归判定
+        run: .venv/bin/python scripts/ci_check.py
+
+      - name: 失败时保留指标与 trace
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-artifacts
+          path: |
+            data/runs/**
+            data/trace.jsonl
+          if-no-files-found: ignore

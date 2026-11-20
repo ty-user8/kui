@@ -7,8 +7,10 @@ rag/
 ├── config.yaml                  # 运行参数（无密钥）
 ├── configs/                     # 实验配置覆盖（grid / ab）
 ├── data/                        # 运行产物：rag.db、trace.jsonl、runs/、pdf-refs/
+├── .github/workflows/eval.yml   # CI：缓存 venv/权重/索引，跑单测与回归判定（REQ-036）
 ├── evals/
 │   ├── cases.csv                # 评测集（gold 锚点）
+│   ├── baseline.json            # CI 比对基准（run_id + 六项指标，更新须走变更单）
 │   ├── rubric.md                # 生成质量人工观察维度（v1 不启用自动评分）
 │   └── tools/
 │       └── fill_anchors.py       # 锚点回填（按 5.3 从 DOCX 抽取 anchor_text 与区间）
@@ -43,6 +45,8 @@ rag/
 │   │   ├── db.py                # 连接（RAG_DB_PATH）、事务、迁移执行
 │   │   └── dao.py               # documents / chunks / runs / eval_cases / traces
 │   ├── trace.py                 # JSONL 写入与字段裁剪（≤80 字摘要）
+│   ├── ui/
+│   │   └── view.py              # 页面纯函数：两路对照、rerank 名次变化、指标读取（v0.5）
 │   ├── api/                     # v0.4
 │   │   ├── main.py              # FastAPI 应用装配、异常收口（400/404/409/500）
 │   │   ├── routes.py            # /search /eval /ingest /trace（只做校验与调用）
@@ -63,10 +67,13 @@ rag/
 │   ├── test_filtering.py        # 元数据过滤与降级单测（7 例）
 │   ├── test_ingest.py           # 入库决策单测（6 例）
 │   ├── test_api.py              # 接口层单测（23 例）
-│   └── test_import_traces.py    # trace 导入单测（9 例）
+│   ├── test_import_traces.py    # trace 导入单测（9 例）
+│   ├── test_ci_check.py         # CI 回归判定单测（10 例）
+│   └── test_ui_view.py          # 页面纯函数单测（11 例）
 ├── scripts/
 │   ├── normalize_lock.py        # 规范化 requirements.lock.txt 的本地 wheel 行，打印 deps_sha256
 │   ├── download_model.py        # 从官方 API 元数据下载模型权重并按 sha256 校验
+│   ├── ci_check.py              # CI 回归判定：复现一致 → run_id 未变 → 指标无退化
 │   └── smoke.py                 # 冒烟脚本（v0.5）
 └── requirements.txt / requirements.lock.txt
 ```

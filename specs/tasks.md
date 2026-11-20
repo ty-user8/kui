@@ -53,7 +53,7 @@
 
 | 编号 | 目标 | 涉及文件 | 依赖 | EARS | DoD |
 | --- | --- | --- | --- | --- | --- |
-| T-026 | Streamlit 单页 | `app.py` | T-023 | — | 输入 query，展示两路召回、rerank 前后、命中 chunk 与指标 |
+| T-026 | Streamlit 单页 | `app.py` | T-023 | — | 输入 query，展示两路召回、rerank 前后、命中 chunk 与指标。**归属 v0.5**；2026-11-20 按用户指示提前实施，**不进 v0.4 DoD** |
 | T-027 | `/ask` 生成层与引用校验 | `src/generate/*`、`specs/08-prompts/ask.system.v1.md` | T-023 | REQ-049、REQ-050、REQ-051、REQ-052 | 30 秒熔断；引用越界标记；缺 key 报错；不进指标 |
 | T-028 | 失败案例批量归因 | `data/`、`PROGRESS.md` | T-019、T-027 | — | 15~20 条 bad case 归类；假设由人固化为规则 |
 | T-029 | README、架构图、冒烟脚本 | `README.md`、`scripts/smoke.py` | T-026 | — | 冒烟可重复执行且自动清理；环境要求/快速开始/默认账号（无）齐全 |

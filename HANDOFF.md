@@ -4,9 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：新增 `src/cli/import_traces.py`（trace.jsonl → `traces` 表，计次对账幂等、`--rebuild`、`--run-id`）与 `tests/test_import_traces.py`（9 例）；`05-modules.md` 测试清单补齐。
-- 实测：`.venv\Scripts\python.exe -m src.cli.import_traces` 0（首次写 10 条，二次写 0 / 跳 10，行数稳定 10）；`--rebuild` 0（清 4 写 10）；`-m unittest tests.test_import_traces` 0（9 例）；`unittest discover` 79 例待跑全量。
-- 待确认：push（本地积压将增至 5 个提交），等 paused 点。下一步 T-025 CI 回归。
+- 改动：`12-release-checklist.md` 补 v0.4 专项 14 项（V04-01~V04-14，含 CI 一条如实写「仅本地验证、未在真实 runner 跑过」）；`tasks.md` 与 `PROGRESS.md` 标注 T-026 属 v0.5、提前实施、不进 v0.4 DoD；`PROGRESS.md` 的「G4 就绪材料」改为 v0.4 版。
+- 实测：`compileall` 0；`unittest discover` 0（100 例）；`scripts/ci_check.py --skip-run` 0（attempt-2/3 均 576 字节一致、`run_id` 未变、六项无退化）；`fill_anchors --check` 0（100 条逐字一致）；workflow YAML 解析 12 步；附录 C.4 与密钥扫描零命中。
+- 待确认：v0.4 G4 过门 + push `dev`（只推 `dev`，不碰 `main`、不 force）；本轮 14 项改动（含 CHG-009 那 4 处文档改动）一并提交推送。
 
 ## 核验方写（每轮）
 
@@ -23,7 +23,7 @@
 
 ## 当前状态（开发方维护，每轮更新）
 
-- 版本：v0.3 已推送（`origin/dev` = `20c5c20`）；v0.4 进行中，T-021~T-024 完成（本地待推）
+- 版本：v0.3 已推送（`origin/dev` = `20c5c20`）；v0.4 任务完成待 G4、v0.5 已起（T-026 单页先行）
 - 门禁：G1/G2/G3 通过；CHG-001~006 已确认，001/002/003 状态行为「规格层已落地 + 剩余执行清单」
 - 权重：`.cache/models/bge-small-zh-v1.5`，指纹写入 `data/index/index-meta.json` 的 `weights_sha256`
 - 索引：全量 2704 条 512 维、5,675,789 字节（v0.1 的 34 条已重建覆盖）
@@ -32,7 +32,7 @@
 - 规模：已回填实测——v0.1 14925 字/34 chunk；v0.2 150 篇/2704 chunk/1,191,197 字/索引 5.42 MB
 - 检查单：`12-release-checklist.md` v0.1 专项 8 项 + C-06/C-07 已勾选；v0.2 段待补
 - 仓库：`git init -b main`，提交 `a9ee1af`；`dev` 已建并推送
-- 远端：`origin` = `https://github.com/ty-user8/kui.git`；已推送 `origin/dev`（v0.1 内容提交 `a9ee1af`，其后为记录类提交；远端仅此一个分支，记录类提交会让头部前移，远端实际头部以 `git log origin/dev` 为准），`main` 未 push、未 force
+- 远端：`origin` = `https://github.com/ty-user8/kui.git`；已推送 `origin/dev`（v0.1 内容提交 `a9ee1af`，其后为记录类提交；远端仅此一个分支，记录类提交会让头部前移，远端实际头部以 `git log origin/dev` 为准），`main` 交付前不推、未 force（CHG-009：v0.5 交付时快进推一次）
 
 ## 待确认（开发方写）
 

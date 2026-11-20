@@ -6,7 +6,7 @@
 
 **v0.3 任务与收尾实验完成并推送**（T-016~T-020，另加切分与父子结构接入评测）：三处否决不启用（标题注入、rerank、recursive/sliding 与父子结构），基线切分与默认检索链保持不变。
 
-**v0.4 进行中**：T-021（元数据过滤 + 三条降级）、T-022（增量入库 + 质量报告）、T-023（四接口 + 状态机）、T-024（trace 导入）完成。`config.yaml` 的 `use_bm25` 由 `false` 改为 `true`，与 `CHG-007` 基线检索链对齐（追认单 `CHG-008`，含 `run_id` 规范串不含该开关的缺口登记与处置）；此前只有命令行显式 `--retriever hybrid` 才走融合，接口沿用旧值会与基线不一致。
+**v0.4 进行中**：T-021（元数据过滤 + 三条降级）、T-022（增量入库 + 质量报告）、T-023（四接口 + 状态机）、T-024（trace 导入）、T-025（CI 回归）、T-026（Streamlit 单页，属 v0.5 段、按指示先行）完成。`config.yaml` 的 `use_bm25` 由 `false` 改为 `true`，与 `CHG-007` 基线检索链对齐（追认单 `CHG-008`，含 `run_id` 规范串不含该开关的缺口登记与处置）；此前只有命令行显式 `--retriever hybrid` 才走融合，接口沿用旧值会与基线不一致。
 
 ## Implement 进度
 
@@ -31,6 +31,8 @@
 | T-022 | `src/cli/ingest.py`、`tests/test_ingest.py` | 增量入库：`text_sha256` 未变即 skip（两次运行均「待写入 0／未变 150」，`documents=150`、`chunks=2704` 不变）；`--force` 重写 150 篇后行数仍不变；批内同哈希判 `duplicate_content:<doc_id>`（语料无重复内容，路径由单测覆盖）；`ingest_log` 逐文件记 action/reason（三次运行 150+150+150 条可查）；质量报告落 `data/ingest-report.json`：字符 1,191,197、`excluded_chars` 2,205（0.19%）、含表格文档 1 篇、条号覆盖 53.8%；单测 6 例 |
 | T-023 | `src/api/{main,routes,service,errors}.py`、`tests/test_api.py`；`src/cli/ingest.py`（拆出 `run_ingest`）、`src/retrieve/hybrid.py`（`last_routes`）、`config.yaml`（`use_bm25: true`，追认单 `CHG-008`） | 四接口跑通：`/search` 200（3 条、`path=fused`、`run_id=r6c23283f2577`）、`/eval --split dev` 200（80 条、指标与基线逐项一致）、`/ingest` 连调两次均 `documents=150`／`chunks=2704`／`skipped=2`（幂等，REQ-048）、`/trace` 200 返回 3 条摘要；错误码可达：`INVALID_REQUEST` 400（空 query／`top_k=99`／未知 filter／非法 split／非法 source）、`RUN_NOT_FOUND` 404、`INDEX_EMPTY` 409（单测构造索引缺失）、`CONFIG_MISSING_KEY` 500（映射表 + `require_db_path` 路径）；OpenAPI 逐字段校验 6 个响应全通过；无 `securitySchemes`；单测 23 例（接口 20 + 契约 3） |
 | T-024 | `src/cli/import_traces.py`、`tests/test_import_traces.py` | trace.jsonl → `traces` 表：每行记 `source_run_id` 与 `imported_at`，`latency_json` 与 excerpt 原样搬；按 `(source_run_id, case_id, query_raw, hit_chunk_id, hit_rank)` **计次对账**（文件 N 次、表 M 行则补 N−M 行）——首次导入 10 条全写入，二次导入写 0、跳 10，行数稳定 10；`--rebuild` 先清该 run 再重导（实测清 4 写 10）；`--run-id` 只导指定运行；单测 9 例 |
+| T-025 | `.github/workflows/eval.yml`、`scripts/ci_check.py`、`evals/baseline.json`、`tests/test_ci_check.py` | CI 判定顺序照 REQ-036 落地：①最后两个 `attempt` 的 `metrics.json` 逐字节比对（本地实测 attempt-2/3 一致，576 字节）；②`run_id` 必须等于基准 `r6c23283f2577`；③计数型（R@1/3/5、HitRate@5）零容忍、连续型（MRR、nDCG@5）1e-6 容差；人为劣化基准（R@5 抬到 0.95、MRR 抬到 0.72）→ 退出码 1 并逐项列出，正常基准 → 退出码 0；workflow 用 venv/权重/索引三层缓存，缓存命中时不装 torch、不重建索引；单测 10 例 |
+| T-026（**归 v0.5，提前实施，不进 v0.4 DoD**） | `app.py`、`src/ui/view.py`、`tests/test_ui_view.py` | 单页跑通（Streamlit 1.67 + 官方 `AppTest` 无头执行，198 行）：首屏 6 张指标卡（基准 `r6c23283f2577`，本机 attempt-3，delta 全 +0.0000）；检索「发明专利权的期限是几年」→ 两路表 15×13（向量/BM25 排名与分数、融合排名）、最终表 5×9；打开 rerank 且超时调 20000 ms → 第三张表 5×11，子标题「已完成」，rerank 分 0.9991／0.9941，名次 +1／+2，新进候选标空原排名；保持默认超时 3000 ms 时如实回退并给 `FALLBACK_RERANK_TIMEOUT` 警告（与 T-020 延迟基线一致）；页面分数直接取自检索链，不二次加工；单测 11 例 |
 | T-021 | `src/retrieve/filtering.py`、`src/retrieve/hybrid.py`、`tests/test_filtering.py` | 元数据过滤（doc_id／category／authority／日期区间，候选层 oversample×5 再筛）；三条降级各有实测：`FALLBACK_BM25`（仅保留 bm25 索引时命中 5 条并标记）、`FALLBACK_RERANK_TIMEOUT`（注入 50 ms 延迟）、`FILTER_RELAXED`（`publish_from=2099-01-01` 触发放宽并标记）；`category=行政法规` 过滤后 5 条全部为行政法规；单测 7 例 |
 | v0.3 收尾 | `src/eval/mapping.py`（parent 映射）、`src/eval/runner.py`（`use_parent`）、`src/cli/eval.py`（`--parent`）、`src/split/recursive.py`（超长单元切分）、`evals/experiments-v0.3.md` | 三切分接入评测：fixed 2704／R@5 0.8875／MRR 0.6948 最优，recursive 3402／0.6875／0.5056，sliding 2918／0.8375／0.6065 → **不替换基线切分**；父子结构 3090 child／1084 parent／R@5 0.8500／MRR 0.6865 → **不启用**；分组对比用 `--run-suffix` 并列保留，holdout 未参与选型 |
 | T-020 | `src/eval/bootstrap.py`、`tests/test_bootstrap.py`、`evals/experiments-v0.3.md` | 配对 bootstrap 1000 轮：R@1 差值 +0.0125 区间 [+0.0000, +0.0375]、R@5 0.0000 [0,0]、MRR +0.0052 [−0.0031, +0.0187] —— 三项均 overlap，**不声明提升、`use_rerank` 保持 false**；延迟基线 p50 5,288.8 ms／p95 7,385.7 ms，已超 3000 ms 超时，说明 CPU 上重排多数走降级；单测 7 例 |
@@ -66,16 +68,17 @@
 | 对比表 | `evals/experiments-v0.2.md` |
 | 历史基线 | `r98aa795a93cf`（v0.1，仅留档，不再作对照） |
 
-## G4 就绪材料
+## G4 就绪材料（v0.4）
 
 | 材料 | 位置 / 结果 |
 | --- | --- |
-| 本版生效依据 | T-016~T-020 完成记录 + 收尾实验；`D-023`（不引入 OpenCC）；三处否决不启用 |
-| `eval` 输出 | 基线 `r6c23283f2577`（100 条全量）；分组 `-dev-split-{fixed,recursive,sliding}`、`-dev-parent`、`-dev-rerank`、`-dev-{nohead,head}` |
-| 回归对比 | 指标口径与数值未变；`run_id` 因 `cases_sha256` 变化由 `r5e4a62714526` 变为 `r6c23283f2577`，语料与检索链未替换；各组差异见 `evals/experiments-v0.3.md` |
-| 自检 | `compileall` 0；`unittest discover` 34 例通过；`fill_anchors --check` 0（100 条逐字一致） |
-| 检查单 | `12-release-checklist.md`：v0.1 专项 8 项、v0.2 专项 9 项、v0.3 专项 7 项、通用项 8 项已勾选（C-09 待 v0.5） |
-| 说明文本 | 附录 C.4 关键词扫描零命中（本轮新增文件仍适用） |
+| 本版生效依据 | T-021~T-025 完成记录 + `CHG-008`（默认链对齐基线）+ `CHG-009`（交付时推 main 一次）；v0.3 三处否决仍不启用 |
+| `eval` 输出 | 基线 `r6c23283f2577`（100 条全量，`data/runs/r6c23283f2577/attempt-1~3`）；`evals/baseline.json` 为 CI 比对基准 |
+| 回归对比 | `scripts/ci_check.py` 本地 PASS：attempt-2/3 逐字节一致（576 字节）、`run_id` 未变、六项 0.5600／0.8600／0.9000／0.7045／0.7543／0.9000 无退化；劣化基准 → 退出码 1 |
+| 自检 | `compileall` 0；`unittest discover` 100 例通过；`fill_anchors --check` 0（100 条逐字一致）；workflow YAML 解析 12 步 |
+| 检查单 | `12-release-checklist.md`：v0.1 8 项、v0.2 9 项、v0.3 7 项、v0.4 14 项、通用 8 项已勾选；V04-12（真实 runner）标**未验证**；C-09（默认账号表）待 v0.5 README |
+| 说明文本 | 附录 C.4 关键词扫描零命中（v0.4 新增 `src/api`、`src/ui`、`app.py` 已扫） |
+| 口径边界 | T-026 属 v0.5、提前实施，不进 v0.4 DoD；CI 仅本地验证，不写作「已验证」 |
 
 ## 步骤 5 核对结果（落盘）
 

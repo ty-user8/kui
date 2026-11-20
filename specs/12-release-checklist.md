@@ -56,3 +56,24 @@
 | V03-05 | 延迟基线已记录 p50/p95 与索引体积 | `evals/experiments-v0.3.md` | 通过：检索 p50 5,288.8 ms／p95 7,385.7 ms；索引体积三档均已记 |
 | V03-06 | 三处否决有据且默认路径未变 | 对照 `experiments-v0.3.md` 与 `config.yaml` | 通过：标题注入、rerank、recursive/sliding 与父子结构均未启用，基线切分 fixed 不变 |
 | V03-07 | 查询归一化：全半角与空白折叠后结果一致 | 单测 `tests/test_normalize.py` | 通过：5 例（繁转简按 D-023 不适用） |
+
+## v0.4 专项
+
+| # | 检查项 | 判定方式 | 状态 |
+| --- | --- | --- | --- |
+| V04-01 | 元数据过滤四类字段生效（doc_id／category／authority／日期区间），候选层 oversample×5 | 接口实测 `filters.category=行政法规` | 通过：返回 5 条全为行政法规；日期区间与 doc_id 由单测覆盖（7 例） |
+| V04-02 | 三条降级各自可达且标记 | 单测 + 实测 | 通过：仅保留 `bm25.pkl` → `FALLBACK_BM25`；注入 50 ms 延迟 → `FALLBACK_RERANK_TIMEOUT`；`publish_date_from=2099-01-01` → `FILTER_RELAXED` 并返回未过滤结果 |
+| V04-03 | 增量入库幂等 | `ingest --source full` 连跑两次 | 通过：两次均「待写入 0／内容未变 150」，`documents=150`、`chunks=2704` 不变 |
+| V04-04 | `--force` 重写不产生重复行 | `ingest --source full --force` | 通过：待写入 150 但行数仍为 150/2704，`ingest_log` 记 `insert/content_changed` |
+| V04-05 | 质量报告含 `excluded_chars` 与条号覆盖 | 读 `data/ingest-report.json` | 通过：字符 1,191,197、排除 2,205（0.19%）、含表格文档 1 篇、条号覆盖 53.8% |
+| V04-06 | 四接口响应符合 `07-api/openapi.yaml` | 起服务后按契约逐字段校验 | 通过：`/search`、`/eval`、`/ingest`、`/trace` 及 2 个错误响应共 6 个响应全通过；`flags` 与 `excerpt nullable` 已在契约中声明 |
+| V04-07 | `/ingest` 重复调用幂等（REQ-048） | 连调两次 `POST /ingest` | 通过：两次均 `documents=150`／`chunks=2704`／`skipped=2` |
+| V04-08 | 错误码逐条可达、不裸 500 | 逐条触发 | 通过：400 `INVALID_REQUEST`（空 query、`top_k=99`、未知 filter 键、非法 split、非法 source）、404 `RUN_NOT_FOUND`、409 `INDEX_EMPTY`（单测构造索引缺失）；500 类仅由码表与异常处理器覆盖，未构造生产级故障 |
+| V04-09 | 接口无鉴权参数（REQ-056） | 读 `app.openapi()` | 通过：无 `securitySchemes`／`bearerAuth`／`apiKey`，四个接口均无 token 字段 |
+| V04-10 | trace 导入幂等且记 `source_run_id`／`imported_at` | `import_traces` 连跑 + `--rebuild` | 通过：首次写 10 行、二次写 0 跳 10、行数稳定 10；`--rebuild` 清 4 写 10；单测 9 例 |
+| V04-11 | CI 判定顺序（REQ-036）：复现一致 → `run_id` 未变 → 指标无退化 | 本地 `scripts/ci_check.py` | 通过（**仅本地**）：PASS ①attempt-2/3 均 576 字节逐字节一致、②`run_id=r6c23283f2577`、③六项 0.5600/0.8600/0.9000/0.7045/0.7543/0.9000；人为劣化基准 → 退出码 1 并列出 2 项退化 |
+| V04-12 | GitHub Actions workflow 可执行 | `.github/workflows/eval.yml` | **未验证**：本地只解析了 YAML 结构与 12 个步骤，逻辑与 `ci_check.py` 同源；**未在真实 GitHub runner 上跑过**，缓存命中率与首次安装 torch 的耗时均未实测 |
+| V04-13 | 默认检索链与 `CHG-007` 基线一致（`CHG-008`） | 默认配置重算全量 100 条 | 通过：六项与基线逐项相同；`/search` 返回 `path=fused` |
+| V04-14 | 单元测试全绿 | `unittest discover -s tests -t .` | 通过：100 例（接口 23 + 导入 9 + CI 10 + 页面 11 + 其余 47） |
+
+说明：T-026（Streamlit 单页）归属 v0.5、按用户指示提前实施，**不进 v0.4 DoD**，故不在本表；其自检记录见 `PROGRESS.md` T-026 行。

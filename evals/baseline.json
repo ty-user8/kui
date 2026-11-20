@@ -1,0 +1,18 @@
+{
+  "run_id": "r6c23283f2577",
+  "split": "all",
+  "case_count": 100,
+  "retriever": "hybrid",
+  "use_bm25": true,
+  "use_rerank": false,
+  "effective_from": "CHG-007（2026-11-19 确认，指纹随 C083/C096 的 query 修正更新），默认链对齐见 CHG-008",
+  "metrics": {
+    "recall@1": 0.56,
+    "recall@3": 0.86,
+    "recall@5": 0.9,
+    "hitrate@5": 0.9,
+    "mrr": 0.7045,
+    "ndcg@5": 0.754284
+  },
+  "note": "CI 回归的比对基准（REQ-036）。计数型指标（recall@k、hitrate@k）任何下降即 fail；连续型（mrr、ndcg@5）允许 1e-6 浮点容差。更新本文件必须走变更单（REQ-037），不能为让 CI 变绿而改数。"
+}

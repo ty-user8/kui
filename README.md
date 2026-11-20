@@ -100,8 +100,9 @@ $env:HF_HOME = ".cache/models"
 2. **跨文档混淆 5 条**：短法规在向量空间被同主题长文档压制；文档级召回尚未实现。
 3. **rerank 未启用**：bootstrap 三区间全部与 0 重叠，CPU 延迟 p50 超熔断阈值，只保留开关。
 4. **`/ask` 未用真实模型跑过**：开发机无 `RAG_LLM_API_KEY`，200 路径仅由假客户端与 service 层验证；接真 key 后需补一次真跑。
-5. **CI 未在真实 runner 跑过**：workflow 与 `ci_check.py` 逻辑在本地验证，GitHub 上首次运行仍需装一次 torch。
+5. **CI 已在真实 runner 跑通，但首跑要装依赖**：`eval-regression` 14 步在 GitHub Actions 全绿（run `44729212536`，6m38s；缓存命中场景约 50 s）。冷缓存首次需装 torch（约 120 MB）并重建索引，耗时 6~7 分钟。
 6. **v0.1 语料规模过小**（2 篇 / 34 chunk），其指标不可用于判断检索质量。
+7. **架构图渲染未在本机验证**：第 8 节的 mermaid 只做了语法自查，本机无渲染环境；GitHub 页面上的实际渲染待确认。
 
 ## 8. 架构
 

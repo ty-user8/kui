@@ -65,13 +65,13 @@
 
 | 项 | 值 |
 | --- | --- |
-| `run_id` | `r6c23283f2577` |
-| 生效依据 | `CHG-007`（2026-11-19 确认），取代 v0.1 的 `r98aa795a93cf`；同日 C083/C096 的 query 按 REQ-037 修正后 `cases_sha256` 变化，配置指纹随之更新为新 `run_id`，六项指标重跑后与旧值完全一致（0.5600 / 0.8600 / 0.9000 / 0.7045 / 0.7543） |
+| `run_id` | `r31a95a0e1de6` |
+| 生效依据 | `CHG-011`（2026-11-20）：行尾统一 LF 后 `cases_sha256`／`corpus_sha256` 变为 `27fc0a88…`／`010e011f…`，`run_id` 由 `r6c23283f2577` 变为 `r31a95a0e1de6`；六项指标重测逐位相同，数值一个未动。此前 `CHG-007`（2026-11-19）取代 v0.1 的 `r98aa795a93cf` |
 | 语料 / 用例 | 150 篇 / 2704 chunk；100 条（dev 80 / holdout 20，全 `confirmed`） |
 | 检索 | 向量 + BM25 RRF（`rrf_k=60`，每路 20 候选） |
 | 指标 | Recall@1 0.5600／@3 0.8600／@5 0.9000，MRR 0.7045，nDCG@5 0.7543，HitRate@5 0.9000 |
 | 对比表 | `evals/experiments-v0.2.md` |
-| 历史基线 | `r98aa795a93cf`（v0.1，仅留档，不再作对照） |
+| 历史基线 | `r98aa795a93cf`（v0.1，仅留档，不再作对照）；`r6c23283f2577`（v0.2~v0.5 中段，CRLF 工作区时点，仅留档） |
 
 ## G4 就绪材料（v0.4）
 
@@ -215,6 +215,7 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 - 本地同款判定（`scripts/ci_check.py`，新锁，attempt-5／6）三项全 PASS：`metrics.json` 逐字节一致（576 字节）、`run_id=r6c23283f2577` 未变、六项无退化。
 - **二次运行（run `44727235979`，commit `01bf29a`，3m52s，失败）**：加 `::error::` 前缀后，第 14 步的失败原因直接进 annotation——`FAIL ①：data/runs/r6c23283f2577 下只有 0 个 attempt，无法做复现比对`。其余 13 步仍全过（安装依赖 53 s、打印环境、入库 3 s、向量索引 2m11s、BM25 3 s、单测 5 s）。
 - **根因已定位（不是复现性、也不是指标退化）**：`run_id` 的指纹绑在文件字节上，而两个被哈希的文件在 Windows 工作区是 CRLF、在 git 里是 LF（`git ls-files --eol`：`i/lf w/crlf`；本机 `core.autocrlf=true`，仓库无 `.gitattributes`）。CI 检出的是 LF，于是 `cases_sha256`／`corpus_sha256` 与基线不同：本机 `7f94fe58…`／`c861678a…` → CI `27fc0a88…`／`010e011f…`，`run_id` 由 `r6c23283f2577` 变成 **`r31a95a0e1de6`**（用 `build_run_id` 按两种指纹各算一遍复现）。CI 把 attempt 写进 `r31a95a0e1de6/`，`ci_check` 按基线 id 找 `r6c23283f2577/` → 0 个 attempt → 报 ①。指标本身未参与比较，是否退化**还不知道**。
-- 处置待你拍（均未执行，未动基线/容差）：**A** 让指纹与换行符解耦（`build_run_id` 读字节后 CRLF→LF 归一，或加 `.gitattributes` 强制 `eol=lf` 并重检出工作区）——两种都会让本机 run_id 也变成 `r31a95a0e1de6`，需按 REQ-037 重测基线，此后跨平台稳定；**B** 只在 CI 对齐 CRLF（检出后重写行尾）——基线不动、改动最小，但指纹继续与检出配置耦合，编辑器或 git 配置一变就再破；**C** 在 Linux 上重测基线——本机 Windows 又会不一致，形成双口径，不推荐。我倾向 A（`.gitattributes` 那条更彻底：仓库内容本就是 LF，只需重检出工作区，不必改代码）。
+- 处置：用户 2026-11-20 选 **A 根治**，已按 `CHG-011` 执行——新增 `.gitattributes`（`* text=auto eol=lf`），脚本把 54 个文本文件的 `CRLF` 逐字节改成 `LF`（`git ls-files --eol` 现为 122×`i/lf w/lf` + 150×`i/-text w/-text`，`git status` 无残留 modified，`git diff --cached` 为空即 blob 未变）；重跑基线落 `r31a95a0e1de6/attempt-1`，六项与旧基线**逐位相同**，`evals/baseline.json` 只改 `run_id` 与 `effective_from`。
+- **新发现（待你定）**：行尾归一让所有文本文件的**工作区字节指纹**变了（git blob 哈希未变，可溯源）。`PROGRESS.md` 冻结快照表与 `specs/00-source/README.md` 里的「大小 + SHA-256」仍是 CRLF 时点的值；另外抽验发现 `12-release-checklist.md` C-01 记的技术方案「29920 B / 76b18223…」与当前 blob（30041 B）本就不符——`fd509a8` 随 `CHG-009` 改过该文件 §2.1（1 行增删）后没同步这条。要不要按 LF 口径重登一次快照、C-01 是否按现文件重算，等你定，本批没动冻结记录。
 - `12-release-checklist.md` 已补 v0.5 专项 12 项：V05-09（`/ask` 真实模型）、V05-11（mermaid 渲染）、V05-12（真实 runner）分别标「待补／未验证／待验证」。
 - 下一步：v0.5 收尾（G4 材料与 V05 逐条核对；`/ask` 接真 key 后补一次完整真跑）。

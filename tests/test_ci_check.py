@@ -57,7 +57,7 @@ class TestCompare(unittest.TestCase):
 class TestBaselineFile(unittest.TestCase):
     def test_loads_repo_baseline(self):
         payload = load_baseline(pathlib.Path("evals/baseline.json"))
-        self.assertEqual(payload["run_id"], "r6c23283f2577")
+        self.assertEqual(payload["run_id"], "r31a95a0e1de6")
         self.assertEqual(payload["case_count"], 100)
         for name in COUNT_METRICS + CONTINUOUS_METRICS:
             self.assertIn(name, payload["metrics"])

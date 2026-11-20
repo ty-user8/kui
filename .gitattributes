@@ -1,0 +1,6 @@
+# 换行符统一为 LF：仓库内的 blob 本来就是 LF，这条强制检出也按 LF 落到工作区，
+# 覆盖 Windows 上 core.autocrlf=true 的自动转换。
+# 起因：run_id 的指纹算的是文件字节（cases.csv、manifest.json），工作区 CRLF 与
+# CI 检出 LF 会得到两个不同的 run_id（本机 r6c23283f2577 / CI r31a95a0e1de6），
+# 详见 specs/changes/CHG-011-run-id-line-ending.md。
+* text=auto eol=lf

@@ -88,7 +88,7 @@ class TestMetrics(unittest.TestCase):
 
     def test_baseline_and_delta(self):
         payload = view.baseline_metrics(pathlib.Path("evals/baseline.json"))
-        self.assertEqual(payload["run_id"], "r6c23283f2577")
+        self.assertEqual(payload["run_id"], "r31a95a0e1de6")
         self.assertAlmostEqual(view.metric_delta(0.9, 0.9), 0.0)
         self.assertLess(view.metric_delta(0.88, 0.9), 0)
         self.assertIsNone(view.baseline_metrics("nope.json"))

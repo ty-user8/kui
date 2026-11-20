@@ -1,11 +1,11 @@
 {
-  "run_id": "r6c23283f2577",
+  "run_id": "r31a95a0e1de6",
   "split": "all",
   "case_count": 100,
   "retriever": "hybrid",
   "use_bm25": true,
   "use_rerank": false,
-  "effective_from": "CHG-007（2026-11-19 确认，指纹随 C083/C096 的 query 修正更新），默认链对齐见 CHG-008",
+  "effective_from": "CHG-011（2026-11-20：行尾统一 LF 后 run_id 由 r6c23283f2577 变为 r31a95a0e1de6，六项数值未变）；此前 CHG-007（2026-11-19）与 CHG-008",
   "metrics": {
     "recall@1": 0.56,
     "recall@3": 0.86,

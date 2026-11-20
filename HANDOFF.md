@@ -4,9 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：`CHG-010` 换锁——venv 内重生成 `requirements.lock.txt`（40 → 73 行，补 `jieba`／`rank_bm25`／`fastapi`／`uvicorn`／`streamlit`／`openai` 及传递依赖）；四处旧哈希回填；按 REQ-037 重跑基线；`eval.yml` 未改。
-- 实测：`deps_sha256` → `0d407a49…20ef0`；`attempt-4` 的 `run_id=r6c23283f2577` 与六项指标不变、`metrics.json` 与前三次逐字节相同。真实 runner run `44715682861`（`e69eeb6`，6m05s，失败）：**14 步里 13 步过**（安装依赖 68 s、打印环境、入库、向量索引 4m11s、BM25、单元测试全绿），只有第 14 步「回归判定」exit 1（14 s）；本地同款 `ci_check.py` 三项 PASS。
-- 待确认：第 14 步失败原因已拿到——`FAIL ①：r6c23283f2577 下只有 0 个 attempt`。根因是 `run_id` 指纹绑文件字节，`evals/cases.csv` 与 `corpus/metadata/manifest.json` 在本机工作区为 CRLF、git 里为 LF（`core.autocrlf=true`、无 `.gitattributes`），CI 检出 LF 后 `run_id` 变 `r31a95a0e1de6`，attempt 写进另一个目录。处置 A/B/C 已列在 `PROGRESS.md`，等你拍；未动基线/容差。V04-12／V05-12 保持「未验证」，G4 不过门。
+- 改动：按 `CHG-011` 根治行尾——新增 `.gitattributes`（`* text=auto eol=lf`），脚本把 54 个文本文件的 `CRLF` 逐字节改 `LF`（不改仓库 blob）；按 REQ-037 重跑基线，`evals/baseline.json` 的 `run_id` 改 `r31a95a0e1de6`、六项数值未动；`ci_check.py` 的 `FAIL` 行已加 `::error::` 前缀（上批）。
+- 实测：`git ls-files --eol` 122×`i/lf w/lf` + 150×`i/-text w/-text`，`git status` 无残留 modified、`git diff --cached` 为空；新 `run_id=r31a95a0e1de6`（`attempt-1`），六项 0.5600／0.8600／0.9000／0.7045／0.7543／0.9000 与旧基线逐位相同，`metrics.json` 576 字节 sha `d07e63d7…`；本地 `ci_check.py` 三项 PASS。
+- 待确认：真实 runner 14 步是否全绿（推后看 annotation）；另发现 `12-release-checklist.md` C-01 的技术方案尺寸/哈希自 `fd509a8`（CHG-009）起就没同步，以及行尾归一使所有文本文件的工作区字节指纹变化（blob 未变），是否按 LF 口径重登快照待你定。V04-12／V05-12 仍「未验证」，G4 不过门。
 
 ## 核验方写（每轮）
 
@@ -27,7 +27,7 @@
 - 门禁：G1/G2/G3 通过；CHG-001~006 已确认，001/002/003 状态行为「规格层已落地 + 剩余执行清单」
 - 权重：`.cache/models/bge-small-zh-v1.5`，指纹写入 `data/index/index-meta.json` 的 `weights_sha256`
 - 索引：全量 2704 条 512 维、5,675,789 字节（v0.1 的 34 条已重建覆盖）
-- 指标（v0.2 最终，100 条 / 融合）：R@1 0.5600／@3 0.8600／@5 0.9000、MRR 0.7045、nDCG@5 0.7543，`run_id=r6c23283f2577`（基线，CHG-007 确认；`CHG-010` 换锁后重跑 `attempt-4` 数值未变）
+- 指标（v0.2 最终，100 条 / 融合）：R@1 0.5600／@3 0.8600／@5 0.9000、MRR 0.7045、nDCG@5 0.7543，`run_id=r31a95a0e1de6`（基线，`CHG-011` 行尾归一后重测；数值与 `CHG-007` 时代的 `r6c23283f2577` 逐位相同）
 - 案例：BC-001 = C015（失败）；BC-002 = C010（现象）；全量语料后待复测
 - 规模：已回填实测——v0.1 14925 字/34 chunk；v0.2 150 篇/2704 chunk/1,191,197 字/索引 5.42 MB
 - 检查单：`12-release-checklist.md` v0.1 专项 8 项 + C-06/C-07 已勾选；v0.2 段待补
@@ -36,7 +36,7 @@
 
 ## 待确认（开发方写）
 
-- 基线 `r6c23283f2577`（CHG-007）；`CHG-010` 换锁后 `deps_sha256 = 0d407a49…20ef0`，等真实 runner 14 步全绿
+- 基线 `r31a95a0e1de6`（`CHG-011`）；`deps_sha256 = 0d407a49…20ef0`（`CHG-010`）；等真实 runner 14 步全绿
 
 ## 结论（核验方写）
 

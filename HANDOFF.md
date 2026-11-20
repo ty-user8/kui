@@ -4,9 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：`12-release-checklist.md` 补 v0.4 专项 14 项（V04-01~V04-14，含 CI 一条如实写「仅本地验证、未在真实 runner 跑过」）；`tasks.md` 与 `PROGRESS.md` 标注 T-026 属 v0.5、提前实施、不进 v0.4 DoD；`PROGRESS.md` 的「G4 就绪材料」改为 v0.4 版。
-- 实测：`compileall` 0；`unittest discover` 0（100 例）；`scripts/ci_check.py --skip-run` 0（attempt-2/3 均 576 字节一致、`run_id` 未变、六项无退化）；`fill_anchors --check` 0（100 条逐字一致）；workflow YAML 解析 12 步；附录 C.4 与密钥扫描零命中。
-- 待确认：v0.4 G4 过门 + push `dev`（只推 `dev`，不碰 `main`、不 force）；本轮 14 项改动（含 CHG-009 那 4 处文档改动）一并提交推送。
+- 改动：`PROGRESS.md` 写 v0.4 推送记录（`origin/dev` = `fd509a8`、积压 0）与「v0.4 已完成并发布」，第 9 行口径统一为「属 v0.5、提前实施」；`HANDOFF.md` 同步当前状态。
+- 实测：`git ls-remote --heads origin` 仅 `refs/heads/dev` = `fd509a8`；`origin/dev..dev` 积压 0；工作区干净；`main` 本地仍 `a9ee1af`、远端无 `main`。
+- 待确认：无阻塞；V04-12 保持未验证。下一步 T-027（`/ask` 生成层与引用校验）。
 
 ## 核验方写（每轮）
 
@@ -23,7 +23,7 @@
 
 ## 当前状态（开发方维护，每轮更新）
 
-- 版本：v0.3 已推送（`origin/dev` = `20c5c20`）；v0.4 任务完成待 G4、v0.5 已起（T-026 单页先行）
+- 版本：v0.4 已发布（G4 过门，`origin/dev` = `fd509a8`）；v0.5 进行中（T-026 单页已完成，T-027 进行中）
 - 门禁：G1/G2/G3 通过；CHG-001~006 已确认，001/002/003 状态行为「规格层已落地 + 剩余执行清单」
 - 权重：`.cache/models/bge-small-zh-v1.5`，指纹写入 `data/index/index-meta.json` 的 `weights_sha256`
 - 索引：全量 2704 条 512 维、5,675,789 字节（v0.1 的 34 条已重建覆盖）

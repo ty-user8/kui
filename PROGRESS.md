@@ -209,6 +209,7 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 - **push**：v0.4 已推 `origin/dev` = `fd509a8`（积压 0）；后续仍只推 `dev`，`main` 留到 v0.5 交付时按 `CHG-009` 快进推一次。
 - `CHG-008` 的缺口处置采用选项 A（靠 `attempt-N/meta.json` 的 `use_bm25` 与 `metrics.json` 的 `retriever` 区分，不改 `runs` 表、不改规范串）；选项 B（把开关纳入 `run_id` 规范串）留作下个大版本候选，届时须重定基线。
 - 非阻塞：`CHG-001/002/003` 仍为「已确认」并附剩余执行清单（随 v0.2/v0.4 落地后转已完成）；V04-12（真实 GitHub runner）保持**未验证**，等真跑过再改。
-- CI 修复待验证：`eval.yml` 的 `python-version` 由 3.11 改为 3.13（`numpy==2.5.5` 要求 ≥3.12，真实 run `44700442993`／`44700094835` 均挂在「安装依赖」30 秒失败）；锁文件、`deps_sha256`、基线均未变。V04-12 仍标「未验证」，待真实 runner 跑通 12 步再改。
+- **CI 根因已定位（待决策）**：`requirements.lock.txt` 只有 40 个包、v0.1 生成后再未更新，缺 v0.2 起的 `jieba`／`rank_bm25`、v0.4 的 `fastapi`／`uvicorn`、v0.5 的 `streamlit`／`openai` 及传递依赖。run `44705199831` 在「安装依赖」通过后卡在合并的「建索引」；拆步后 run `44707436948`（5m50s）annotation 指向第 12 步「构建 BM25 索引」，而 `bm25_index.py` 顶部 `import jieba` —— 缺包即必失败。即使补 jieba，`单元测试`也会因缺 fastapi 失败、`回归判定`会因 BM25 索引缺失失败。
+- 处置二选一（需你拍）：**A 重新生成锁文件**（`pip freeze` 后规范化，新增 `CHG-010` 追认依赖锁变更；`deps_sha256` 变、基线数值不变，按 REQ-037 重跑一次基线留痕）；**B 只在 CI 补装**六个包（不动锁，但锁与真实环境继续不一致）。我倾向 A。
 - `12-release-checklist.md` 已补 v0.5 专项 12 项：V05-09（`/ask` 真实模型）、V05-11（mermaid 渲染）、V05-12（真实 runner）分别标「待补／未验证／待验证」。
 - 下一步：v0.5 收尾（G4 材料与 V05 逐条核对；`/ask` 接真 key 后补一次完整真跑）。

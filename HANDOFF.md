@@ -4,9 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：`12-release-checklist.md` 补 v0.5 专项 12 项（V05-09 `/ask` 真跑、V05-11 mermaid、V05-12 真实 runner 如实标未完成）；`.github/workflows/eval.yml` 的 `python-version` 由 `3.11` 改为 `3.13`（bug 修复，根因 `numpy==2.5.5` 要求 ≥3.12）；`CHANGELOG.md` 与 `PROGRESS.md` 记根因与两个失败 run 号。
-- 实测：PyPI 元数据确认 `numpy 2.5.5 requires_python = >=3.12`；workflow 仍解析为 12 步、`准备 Python` 步骤值 `3.13`；索引阶段拆成 3 步后共 14 步；锁文件与 `evals/baseline.json` 未动（`deps_sha256` 不变）。
-- 待确认：拆步改动将再推 `dev` 触发一次真实 runner（只 dev、不 force、不碰 main），按新 annotation 定位失败命令；V04-12／V05-12 仍「未验证／待验证」，跑通后再改。`/ask` 真 key 仍待补。
+- 改动：`eval.yml` 把「建索引」拆成 ingest／向量／BM25 三步并加 `set -x`（诊断用，步骤 12→14）；`12-release-checklist.md`、`PROGRESS.md`、`CHANGELOG.md` 写入 CI 根因。
+- 实测：`numpy 2.5.5` 需 Python ≥3.12；run `44705199831`「安装依赖」已通过（版本修复生效）；拆步后 run `44707436948`（5m50s，失败）annotation 指向第 12 步「构建 BM25 索引」；锁文件仅 40 个包，缺 `jieba`／`rank_bm25`／`fastapi`／`uvicorn`／`streamlit`／`openai`，`bm25_index.py` 顶部 `import jieba` 必失败。
+- 待确认：修锁方式（A 重新生成锁 + `CHG-010` + 重跑基线留痕；B 仅 CI 补装），我倾向 A；未动锁文件与基线。G4 未过门，V04-12／V05-12 仍「未验证／待验证」。
 
 ## 核验方写（每轮）
 

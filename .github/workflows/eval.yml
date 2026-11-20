@@ -32,7 +32,10 @@ jobs:
       - name: 准备 Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          # 必须与锁文件要求一致：requirements.lock.txt 的 numpy==2.5.5 要求 Python >=3.12，
+          # 原先的 3.11 会让 pip 直接解析失败（真实 run 44700442993 / 44700094835 均挂在安装依赖这步）。
+          # 本地 venv 为 3.13.14，这里取同一小版本；锁文件不动，所以 deps_sha256 与基线都不变。
+          python-version: "3.13"
           cache: pip
           cache-dependency-path: requirements.lock.txt
 

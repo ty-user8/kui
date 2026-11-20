@@ -119,3 +119,5 @@
 - 文档补记：`07-api/README.md` 与 `08-prompts/README.md` 明写 `/ask` 的 200 路径**未用真实模型跑过**（无 `RAG_LLM_API_KEY`），仅由假客户端与 service 层验证，接真 key 后须补一次真跑；`/ask` 不进指标与 CI 的边界不变。`04-tech-choice` 的 `fastapi`／`uvicorn` 状态由「待装」改为已装版本。
 - 过程记录（2026-11-20）：提交 `14db641` 曾误把 `PROGRESS.md` 的内容写入 `specs/04-tech-choice.md`（脚本变量名撞车所致）。该提交未推送，已用 `git reset --soft` 回退，从 `40545d2` 恢复该文件后重做提交为 `cfc8ef1`；远端未受影响（当时仍停在 `40545d2`），全程未 force。
 - v0.5 T-029：新增 `README.md`（快速开始、10 条常用命令、五接口、基线六项与回归口径、6 条已知限制、mermaid 架构图、安全与账号表）与 `scripts/smoke.py`（增量入库 → 索引一致性 → dev 评测 → 五接口装配，可重复执行）。冒烟连跑两次输出一致、退出码均 0；C-09「默认账号表写无」转通过。`05-modules.md` 目录树补 README 与 smoke 说明。
+- 修复（2026-11-20）：`.github/workflows/eval.yml` 的 `python-version` 由 `3.11` 改为 `3.13`。真实 run `44700442993`／`44700094835` 两次都在「安装依赖」这步 30 秒失败、后续 8 步 skipped，根因是 `requirements.lock.txt` 的 `numpy==2.5.5` 要求 Python ≥3.12（PyPI 元数据 `requires_python = >=3.12`），3.11 下 pip 无法解析；`torch==2.15.0+cpu` 在 cp311 有 x86_64 wheel，与它无关。锁文件未动，`deps_sha256` 与基线均不变；属 bug 修复，未出变更单。V04-12 仍标「未验证」，待真实 runner 跑通后再改。
+- 新增 `12-release-checklist.md` 的 v0.5 专项 12 项（V05-01~V05-12），其中 V05-09（`/ask` 真实模型）、V05-11（mermaid 渲染）、V05-12（真实 runner）如实标「待补／未验证」。

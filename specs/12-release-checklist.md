@@ -77,3 +77,20 @@
 | V04-14 | 单元测试全绿 | `unittest discover -s tests -t .` | 通过：100 例（接口 23 + 导入 9 + CI 10 + 页面 11 + 其余 47） |
 
 说明：T-026（Streamlit 单页）归属 v0.5、按用户指示提前实施，**不进 v0.4 DoD**，故不在本表；其自检记录见 `PROGRESS.md` T-026 行。
+
+## v0.5 专项
+
+| # | 检查项 | 判定方式 | 状态 |
+| --- | --- | --- | --- |
+| V05-01 | README 章节齐全：快速开始、常用命令、接口、指标与基线、已知限制、架构图、安全与账号 | 读 `README.md` 目录结构 | 通过：10 节，含 mermaid 架构图与 §9 账号表 |
+| V05-02 | README 数字与基线一致 | 对照 `evals/baseline.json` 与库内计数 | 通过：150 篇／2704 chunk／100 条；R@1 0.5600、R@3 0.8600、R@5 0.9000、MRR 0.7045、nDCG@5 0.7543、HitRate@5 0.9000；索引 5,675,789 B + BM25 约 5.44 MB |
+| V05-03 | 冒烟脚本可重复执行且输出一致 | `scripts/smoke.py` 连跑两次 | 通过：两次退出码 0、输出逐行一致（待写入 0、chunks=向量=BM25=2704、dev 80 条 unmapped 0） |
+| V05-04 | `/ask` 缺 key 报配置错误，不降级 | 清空 `RAG_LLM_API_KEY` 后 `POST /ask` | 通过：HTTP 500 `CONFIG_MISSING_KEY`，消息含变量名 |
+| V05-05 | `/ask` 超时熔断 30 秒并返回检索结果 | 单测注入 50 ms 慢客户端 | 通过：`reason=ASK_TIMEOUT`、`answer` 为空、`retrieval` 完整；配额上限仍为 50 次 |
+| V05-06 | 引用越界标记且答案不丢 | 单测：答案引用不在 top-k 的 id | 通过：`citation_valid=false`、`reason=CITATION_INVALID`、原答案保留 |
+| V05-07 | 调用配额生效 | 单测把 `llm.max_calls` 设为 1 后连调两次 | 通过：第二次抛结构化错误，计数停在第 1 次 |
+| V05-08 | `/ask` 不进指标、不进 CI | 调用前后比对 `trace.jsonl`；查 workflow 步骤 | 通过：trace 10→10 行未写；workflow 12 步中无 `/ask` |
+| V05-09 | `/ask` 用真实模型跑通 | 设 `RAG_LLM_API_KEY` 后调一次 | **待补**：开发机无 key，200 路径仅由假客户端与 service 层验证 |
+| V05-10 | 失败案例批量归因 | 读 `evals/badcases-v0.5.md` | 通过：44 条 `hit_rank != 1`（A 同条切断 8／B 相邻条干扰 31／C 跨文档 5），20 条代表案例附证据，3 条假设标未验证 |
+| V05-11 | README 架构图可渲染 | GitHub mermaid 渲染 | **未验证**：本地无渲染环境，仅做语法自查；GitHub 上实际渲染待确认 |
+| V05-12 | CI 在真实 runner 跑通 12 步并回归判定 PASS | GitHub Actions 运行记录 | **待验证**：已修 `python-version`（3.11→3.13，numpy 2.5.5 要求 ≥3.12），重推 `dev` 后观察；此前 run `44700442993`／`44700094835` 均挂在「安装依赖」 |

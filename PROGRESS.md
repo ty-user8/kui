@@ -130,7 +130,7 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 | `specs/02-scope.md` | 9942 / `1b856b27b710ec7f` | 10588 / `a2b94c1eedc76cf7` | CHG-003：§2.2 改 attempt 目录；CHG-006：§2 改 v0.1 实测值；T-010：新增 v0.2 全量实测段（150 篇 / 2704 chunk / 1,191,197 字） |
 | `specs/03-architecture.md` | —（G2 阶段产出，未入 G1 快照） | 5558 / `c39cc1d12a2cffed` | CHG-006：§5 chunk 数改实测；T-010：回填全量 2704 / 1,191,197 字 |
 | `specs/tasks.md` | —（G3 阶段产出） | 8010 / `e0b8673d2316b06b` | CHG-006：T-010 DoD 降为参考；T-006 DoD 增索引体积回填与权重指纹 |
-| `evals/cases.csv` | 9687 / `01e558389a817d9b` | 44715 / `7f94fe58a3c8e8d7`（100 条全部 `confirmed`；C083/C096 的 query 改写已由用户复核 2026-11-19） | T-004 回填区间与整段文本；v0.2 新增 70 条；CHG-007 后基线用例集 |
+| `evals/cases.csv` | 9687 / `01e558389a817d9b` | 44614 / `27fc0a8803608809`（100 条全部 `confirmed`；C083/C096 的 query 改写已由用户复核 2026-11-19） | T-004 回填区间与整段文本；v0.2 新增 70 条；CHG-007 后基线用例集；CHG-011：行尾归一，与 blob 口径对齐 |
 | `evals/rubric.md` | 1084 / `92d874d9ff3659c1` | 同左（未改） | — |
 
 `01-requirements.md` 与 `02-scope.md` 在此后如需改动，一律走变更单并在 `CHANGELOG-DECISIONS.md` 记因。
@@ -204,6 +204,16 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 | 未推送 | `main`（本地停在 `a9ee1af`，未 push、未 force）；按 `CHG-009`，v0.5 交付时 `--ff-only` 快进推一次 |
 | 推送记录 | v0.1：`e2357e0`；v0.2：`587cdf9` → `3c43f78` → `3ec9f67`；v0.3：`407fe62`；v0.4：`20c5c20` → `fd509a8`；CI 修复与 `CHG-010`：`59c04a6` → `e69eeb6`；诊断与 `CHG-011`：`01bf29a` → `2b0deff` → `62b2425` → `43eabc4`。均只推 `dev`，`main` 未动、未 force |
 
+## G4 结论（v0.5）
+
+| 项 | 结果 |
+| --- | --- |
+| 门禁 | **通过**（2026-11-20，用户判定「过 G4，按订正后交付」） |
+| 解锁条件 | `V04-12`／`V05-12` 由「未验证」转「通过」：真实 runner run `44729212536` 14 步全绿、回归判定 PASS；缓存命中复跑 `44730458215`／`44730971072` 亦全绿 |
+| 仍如实保留 | `V05-09`（`/ask` 真实模型，无 key 未真跑）、`V05-11`（本地无 mermaid 渲染环境） |
+| 快照表 | 只改 `evals/cases.csv` 当前值为 LF/blob 口径；另有 3 行实测不符已列在「待确认」，未擅自改 |
+| 交付动作 | 按 `CHG-009`：`dev` 快进合并到 `main` 并推一次，不 force、不 amend、不 rebase |
+
 ## 待确认
 
 - **push**：v0.4 已推 `origin/dev` = `fd509a8`（积压 0）；后续仍只推 `dev`，`main` 留到 v0.5 交付时按 `CHG-009` 快进推一次。
@@ -218,6 +228,7 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 - 处置：用户 2026-11-20 选 **A 根治**，已按 `CHG-011` 执行——新增 `.gitattributes`（`* text=auto eol=lf`），脚本把 54 个文本文件的 `CRLF` 逐字节改成 `LF`（`git ls-files --eol` 现为 122×`i/lf w/lf` + 150×`i/-text w/-text`，`git status` 无残留 modified，`git diff --cached` 为空即 blob 未变）；重跑基线落 `r31a95a0e1de6/attempt-1`，六项与旧基线**逐位相同**，`evals/baseline.json` 只改 `run_id` 与 `effective_from`。
 - **真实 runner 全绿（run `44729212536`，commit `43eabc4`，6m38s，success）**：14 步全通过——安装依赖 69 s、打印环境、入库 4 s、向量索引 4m30s、BM25 4 s、单测 7 s、**回归判定 16 s 通过**；post 步骤本次正常保存三层缓存（venv／权重／索引与库）。行尾归一后 CI 与本机算出同一个 `run_id=r31a95a0e1de6`，`ci_check` 三项判定全过。
 - **缓存命中复跑（run `44730458215`，commit `8df26ab`，51 s，success）**：三层缓存全命中，安装依赖与索引重建均跳过，纯计算跑完 14 步——`V04-12`（真实 runner 跑通）与 `V05-12`（真实 runner 验证）的实测条件已具备；按你的指示这两项**仍不勾**、G4 不过门，等 G4 材料齐了一次性改标注。
-- **新发现（待你定）**：行尾归一让所有文本文件的**工作区字节指纹**变了（git blob 哈希未变，可溯源）。`PROGRESS.md` 冻结快照表与 `specs/00-source/README.md` 里的「大小 + SHA-256」仍是 CRLF 时点的值；另外抽验发现 `12-release-checklist.md` C-01 记的技术方案「29920 B / 76b18223…」与当前 blob（30041 B）本就不符——`fd509a8` 随 `CHG-009` 改过该文件 §2.1（1 行增删）后没同步这条。要不要按 LF 口径重登一次快照、C-01 是否按现文件重算，等你定，本批没动冻结记录。
+- **订正（我此前判断有误，已核实）**：`12-release-checklist.md` C-01 的比对对象是 `specs/00-source/` 的**只读归档副本**，实测 29920 B / `76b18223f807fff0`、CRLF=0，与记录一致且行尾归一无影响；根目录那份 30041 B 是工作副本（`fd509a8` 随 `CHG-009` 改过 §2.1），**不是** C-01 的输入材料——C-01 不改。冻结快照表按指示只改 `evals/cases.csv` 当前值（44614 / `27fc0a8803608809`，依据列标 `CHG-011`），「冻结时」列与其他条目未动。
+- **快照表抽验结果（3 条与实测不符，未擅自改，待你定）**：① `02-scope.md` 记录 10588，实测 **10465** / `6db8c0cc0b221911`（10465 + 123 行 = 10588，即记录的是归一前 CRLF 工作区字节）；② `03-architecture.md` 记录 5558，实测 **5453** / `fcc9ec60007e7957`（5453 + 105 行 = 5558，同因）；③ `tasks.md` 记录 8010，实测 **8091** / `8377c4fbbd3cbb01`（+81，与行尾无关，属 `CHG-006` 改过 T-006／T-010 DoD 后「当前值」未回填）。归档副本、`00-source/README.md`、`constitution.md`、`01-requirements.md`、`rubric.md`、`cases.csv` 六条实测吻合。
 - `12-release-checklist.md` 已补 v0.5 专项 12 项：V05-09（`/ask` 真实模型）、V05-11（mermaid 渲染）、V05-12（真实 runner）分别标「待补／未验证／待验证」。
 - 下一步：v0.5 收尾（G4 材料与 V05 逐条核对；`/ask` 接真 key 后补一次完整真跑）。

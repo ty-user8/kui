@@ -71,8 +71,8 @@
 | V04-08 | 错误码逐条可达、不裸 500 | 逐条触发 | 通过：400 `INVALID_REQUEST`（空 query、`top_k=99`、未知 filter 键、非法 split、非法 source）、404 `RUN_NOT_FOUND`、409 `INDEX_EMPTY`（单测构造索引缺失）；500 类仅由码表与异常处理器覆盖，未构造生产级故障 |
 | V04-09 | 接口无鉴权参数（REQ-056） | 读 `app.openapi()` | 通过：无 `securitySchemes`／`bearerAuth`／`apiKey`，四个接口均无 token 字段 |
 | V04-10 | trace 导入幂等且记 `source_run_id`／`imported_at` | `import_traces` 连跑 + `--rebuild` | 通过：首次写 10 行、二次写 0 跳 10、行数稳定 10；`--rebuild` 清 4 写 10；单测 9 例 |
-| V04-11 | CI 判定顺序（REQ-036）：复现一致 → `run_id` 未变 → 指标无退化 | 本地 `scripts/ci_check.py` | 通过（**仅本地**）：PASS ①attempt-2/3 均 576 字节逐字节一致、②`run_id=r6c23283f2577`、③六项 0.5600/0.8600/0.9000/0.7045/0.7543/0.9000；人为劣化基准 → 退出码 1 并列出 2 项退化 |
-| V04-12 | GitHub Actions workflow 可执行 | `.github/workflows/eval.yml` | **未验证**：真实 run `44705199831`（安装依赖已通过）与拆步后的 `44707436948` 均失败；根因为 `requirements.lock.txt` 仍是 v0.1 版本、缺 `jieba`／`rank_bm25`／`fastapi`／`uvicorn`／`streamlit`／`openai`，BM25 步骤 `import jieba` 必失败（修锁需变更单，见 PROGRESS 待确认） |
+| V04-11 | CI 判定顺序（REQ-036）：复现一致 → `run_id` 未变 → 指标无退化 | 本地 `scripts/ci_check.py` | 通过（本地；CI 侧见 V04-12／V05-12）：PASS ①`attempt` 均 576 字节逐字节一致、②`run_id` 与基准一致（当时 `r6c23283f2577`，`CHG-011` 后为 `r31a95a0e1de6`）、③六项 0.5600/0.8600/0.9000/0.7045/0.7543/0.9000；人为劣化基准 → 退出码 1 并列出 2 项退化 |
+| V04-12 | GitHub Actions workflow 可执行 | `.github/workflows/eval.yml` | **通过**：真实 runner 全绿——run `44729212536`（`43eabc4`，6m38s）14 步全过、回归判定 PASS；缓存命中复跑 `44730458215`／`44730971072` 均 51 s 全过。此前失败的两次（`44705199831` 锁文件缺包、`44707436948` 定位到 BM25 步）已由 `CHG-010` 换锁与 `CHG-011` 行尾归一解决 |
 | V04-13 | 默认检索链与 `CHG-007` 基线一致（`CHG-008`） | 默认配置重算全量 100 条 | 通过：六项与基线逐项相同；`/search` 返回 `path=fused` |
 | V04-14 | 单元测试全绿 | `unittest discover -s tests -t .` | 通过：100 例（接口 23 + 导入 9 + CI 10 + 页面 11 + 其余 47） |
 
@@ -93,4 +93,4 @@
 | V05-09 | `/ask` 用真实模型跑通 | 设 `RAG_LLM_API_KEY` 后调一次 | **待补**：开发机无 key，200 路径仅由假客户端与 service 层验证 |
 | V05-10 | 失败案例批量归因 | 读 `evals/badcases-v0.5.md` | 通过：44 条 `hit_rank != 1`（A 同条切断 8／B 相邻条干扰 31／C 跨文档 5），20 条代表案例附证据，3 条假设标未验证 |
 | V05-11 | README 架构图可渲染 | GitHub mermaid 渲染 | **未验证**：本地无渲染环境，仅做语法自查；GitHub 上实际渲染待确认 |
-| V05-12 | CI 在真实 runner 跑通 14 步并回归判定 PASS | GitHub Actions 运行记录 | **待验证**：`python-version` 修复已由 run `44705199831` 证明（安装依赖通过）；拆步后 run `44707436948`（5m50s）annotation 指向第 12 步「构建 BM25 索引」，根因是锁文件缺 `jieba`／`rank_bm25`，修锁须走变更单 |
+| V05-12 | CI 在真实 runner 跑通 14 步并回归判定 PASS | GitHub Actions 运行记录 | **通过**：run `44729212536`（6m38s）14 步全过、「回归判定」16 s PASS（①`attempt` 逐字节一致 ②`run_id=r31a95a0e1de6` 与基准一致 ③六项无退化）；缓存命中场景 `44730458215`／`44730971072` 亦 51 s 全过 |

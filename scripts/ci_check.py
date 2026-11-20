@@ -10,6 +10,9 @@
 
 基准存 `evals/baseline.json`（随仓库走，CI 与本地同一份）。
 
+判失败时每条原因都带 `::error::` 前缀（GitHub workflow command），CI 上直接进 run 的
+annotation，页面上不登录也能看到是哪一条不满足（①/②/③）与具体数值。
+
 用法（项目根目录下）：
     set RAG_DB_PATH=data\\rag.db
     set HF_HOME=.cache/models
@@ -29,6 +32,17 @@ PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[1]
 COUNT_METRICS = ("recall@1", "recall@3", "recall@5", "hitrate@5")
 CONTINUOUS_METRICS = ("mrr", "ndcg@5")
 TOLERANCE = 1e-6
+
+
+def fail(message: str) -> None:
+    """输出判失败原因。
+
+    前面加 GitHub workflow command 前缀 ``::error::``：在 CI 里这行会变成 run 的
+    annotation（无需登录读 job 日志即可看到失败分支与数值），本地运行时则原样打印
+    ``::error::FAIL：…``，人眼一样能读。按 GitHub 要求转义 ``%``／回车／换行。
+    """
+    text = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+    print("::error::" + text)
 
 
 def load_baseline(path: pathlib.Path) -> dict:
@@ -94,35 +108,35 @@ def main() -> int:
         for _ in range(max(2, args.runs)):
             code = run_eval_once(extra)
             if code != 0:
-                print("FAIL：评测命令退出码 %d" % code)
+                fail("FAIL ⓪：评测命令退出码 %d" % code)
                 return 1
 
     run_dir = PROJECT_ROOT / "data" / "runs" / run_id
     attempts = attempt_dirs(run_dir)
     if len(attempts) < 2:
-        print("FAIL：%s 下只有 %d 个 attempt，无法做复现比对" % (run_dir, len(attempts)))
-        print("      若 run_id 已变，说明配置/用例改动未按 REQ-037 走变更单重定基线")
+        fail("FAIL ①：%s 下只有 %d 个 attempt，无法做复现比对" % (run_dir, len(attempts)))
+        fail("若 run_id 已变，说明配置/用例改动未按 REQ-037 走变更单重定基线")
         return 1
 
     latest, previous = attempts[-1], attempts[-2]
     latest_bytes = (latest / "metrics.json").read_bytes()
     previous_bytes = (previous / "metrics.json").read_bytes()
     if latest_bytes != previous_bytes:
-        print("FAIL：%s 与 %s 的 metrics.json 不一致（复现性被破坏）" % (previous.name, latest.name))
+        fail("FAIL ①：%s 与 %s 的 metrics.json 不一致（复现性被破坏）" % (previous.name, latest.name))
         return 1
     print("PASS ①：%s 与 %s 的 metrics.json 逐字节一致（%d 字节）" % (previous.name, latest.name, len(latest_bytes)))
 
     payload = json.loads(latest_bytes.decode("utf-8"))
     if payload.get("run_id") != run_id:
-        print("FAIL：本次 run_id=%s 与基准 %s 不同，须走变更单重定基线" % (payload.get("run_id"), run_id))
+        fail("FAIL ②：本次 run_id=%s 与基准 %s 不同，须走变更单重定基线" % (payload.get("run_id"), run_id))
         return 1
     print("PASS ②：run_id 未变（%s）" % run_id)
 
     problems = compare_metrics(payload["metrics"], baseline["metrics"])
     if problems:
-        print("FAIL ③：指标退化 %d 项" % len(problems))
+        fail("FAIL ③：指标退化 %d 项" % len(problems))
         for item in problems:
-            print("      - %s" % item)
+            fail("- %s" % item)
         return 1
     print(
         "PASS ③：六项指标无退化（R@1 %.4f / @3 %.4f / @5 %.4f / MRR %.4f / nDCG@5 %.4f / HitRate@5 %.4f）"

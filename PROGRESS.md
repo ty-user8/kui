@@ -200,9 +200,9 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 | 密钥 | 全工作区扫描 `sk-`／私钥头／`api_key=`／`password=` 无命中，无 `.env` 类文件 |
 | 待提交文件 | 221 |
 | 远端 | `origin` = `https://github.com/ty-user8/kui.git` |
-| 已推送 | `origin/dev` = `43eabc446028070ddf876228079cbede95c9afd4`（`CHG-011` 行尾归一 + 基线换 `r31a95a0e1de6`），积压 0；远端仅此一个分支 |
-| 未推送 | `main`（本地停在 `a9ee1af`，未 push、未 force）；按 `CHG-009`，v0.5 交付时 `--ff-only` 快进推一次 |
-| 推送记录 | v0.1：`e2357e0`；v0.2：`587cdf9` → `3c43f78` → `3ec9f67`；v0.3：`407fe62`；v0.4：`20c5c20` → `fd509a8`；CI 修复与 `CHG-010`：`59c04a6` → `e69eeb6`；诊断与 `CHG-011`：`01bf29a` → `2b0deff` → `62b2425` → `43eabc4`。均只推 `dev`，`main` 未动、未 force |
+| 已推送 | `origin/dev` = `138d1d35ff1f2c9088aa5de92fccb7472d474115`（G4 过门点），`origin/main` = 同一提交；积压 0 |
+| 未推送 | 无。`main` 已按 `CHG-009` 于 v0.5 交付时 `--ff-only` 快进推送一次（`a9ee1af` → `138d1d3`），未 force、未 amend、未 rebase |
+| 推送记录 | v0.1：`e2357e0`；v0.2：`587cdf9` → `3c43f78` → `3ec9f67`；v0.3：`407fe62`；v0.4：`20c5c20` → `fd509a8`；CI 修复与 `CHG-010`：`59c04a6` → `e69eeb6`；诊断与 `CHG-011`：`01bf29a` → `2b0deff` → `62b2425` → `43eabc4`；CI 全绿记录 `8df26ab` → `479575e`；**交付 `138d1d3`（dev 与 main 同点）**。全程不 force |
 
 ## G4 结论（v0.5）
 

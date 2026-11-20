@@ -32,7 +32,7 @@
 - 规模：已回填实测——v0.1 14925 字/34 chunk；v0.2 150 篇/2704 chunk/1,191,197 字/索引 5.42 MB
 - 检查单：`12-release-checklist.md` 通用项 C-01~C-09、v0.1~v0.5 专项已逐条核对；`V05-09`（`/ask` 真实模型）与 `V05-11`（mermaid 渲染）如实保留「未验证」
 - 仓库：`git init -b main`，提交 `a9ee1af`；`dev` 已建并推送
-- 远端：`origin` = `https://github.com/ty-user8/kui.git`；已推送 `origin/dev`（v0.1 内容提交 `a9ee1af`，其后为记录类提交；远端仅此一个分支，记录类提交会让头部前移，远端实际头部以 `git log origin/dev` 为准），`main` 交付前不推、未 force（CHG-009：v0.5 交付时快进推一次）
+- 远端：`origin` = `https://github.com/ty-user8/kui.git`；`origin/dev` 与 `origin/main` 均停在 `138d1d3`（v0.5 交付点，`main` 由 `a9ee1af` 快进而来，未 force／amend／rebase）
 
 ## 待确认（开发方写）
 

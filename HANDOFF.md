@@ -4,9 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：新增 `src/api/{main,routes,service,errors}.py`（四接口 + 固定状态机 + 错误码收口）、`tests/test_api.py`；`src/cli/ingest.py` 拆出 `run_ingest` 供接口复用；`hybrid.py` 增 `last_routes`；`config.yaml` 的 `use_bm25` 改为 `true`（对齐 CHG-007 基线）；`openapi.yaml`／`07-api/README` 补 `flags`、`score` 与 `excerpt nullable`。
-- 实测：`.venv\Scripts\python.exe -m unittest discover -s tests -t .` 0（70 例全过）；起服务后 `POST /search` 200（3 条、`path=fused`、`run_id=r6c23283f2577`）、`POST /eval {"split":"dev"}` 200（80 条，指标 0.5500／0.8500／0.8875／0.6948／0.7440 与基线一致）、`POST /ingest` 连调两次均 `documents=150`／`chunks=2704`／`skipped=2`、`GET /trace` 200；错误码 400／404／409 逐条触发；OpenAPI 逐字段校验 6 个响应全通过、无 `securitySchemes`。
-- 待确认：push（本地积压 4 个提交：T-021／T-022／T-023／`CHG-008`），按约定等 paused 点。`use_bm25` 已由 `CHG-008` 追认，缺口处置取选项 A（不改规范串、不换基线）。下一步 T-024 trace 导入。
+- 改动：新增 `src/cli/import_traces.py`（trace.jsonl → `traces` 表，计次对账幂等、`--rebuild`、`--run-id`）与 `tests/test_import_traces.py`（9 例）；`05-modules.md` 测试清单补齐。
+- 实测：`.venv\Scripts\python.exe -m src.cli.import_traces` 0（首次写 10 条，二次写 0 / 跳 10，行数稳定 10）；`--rebuild` 0（清 4 写 10）；`-m unittest tests.test_import_traces` 0（9 例）；`unittest discover` 79 例待跑全量。
+- 待确认：push（本地积压将增至 5 个提交），等 paused 点。下一步 T-025 CI 回归。
 
 ## 核验方写（每轮）
 
@@ -23,7 +23,7 @@
 
 ## 当前状态（开发方维护，每轮更新）
 
-- 版本：v0.3 已推送（`origin/dev` = `20c5c20`）；v0.4 进行中，T-021~T-023 完成（本地待推）
+- 版本：v0.3 已推送（`origin/dev` = `20c5c20`）；v0.4 进行中，T-021~T-024 完成（本地待推）
 - 门禁：G1/G2/G3 通过；CHG-001~006 已确认，001/002/003 状态行为「规格层已落地 + 剩余执行清单」
 - 权重：`.cache/models/bge-small-zh-v1.5`，指纹写入 `data/index/index-meta.json` 的 `weights_sha256`
 - 索引：全量 2704 条 512 维、5,675,789 字节（v0.1 的 34 条已重建覆盖）

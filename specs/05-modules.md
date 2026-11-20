@@ -62,7 +62,8 @@ rag/
 │   ├── test_bootstrap.py        # bootstrap 区间与百分位单测（7 例）
 │   ├── test_filtering.py        # 元数据过滤与降级单测（7 例）
 │   ├── test_ingest.py           # 入库决策单测（6 例）
-│   └── test_api.py              # 接口层单测（20 例）
+│   ├── test_api.py              # 接口层单测（23 例）
+│   └── test_import_traces.py    # trace 导入单测（9 例）
 ├── scripts/
 │   ├── normalize_lock.py        # 规范化 requirements.lock.txt 的本地 wheel 行，打印 deps_sha256
 │   ├── download_model.py        # 从官方 API 元数据下载模型权重并按 sha256 校验

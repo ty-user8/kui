@@ -6,7 +6,7 @@
 
 **v0.3 任务与收尾实验完成并推送**（T-016~T-020，另加切分与父子结构接入评测）：三处否决不启用（标题注入、rerank、recursive/sliding 与父子结构），基线切分与默认检索链保持不变。
 
-**v0.4 进行中**：T-021（元数据过滤 + 三条降级）、T-022（增量入库 + 质量报告）、T-023（四接口 + 状态机）完成。`config.yaml` 的 `use_bm25` 由 `false` 改为 `true`，与 `CHG-007` 基线检索链对齐（追认单 `CHG-008`，含 `run_id` 规范串不含该开关的缺口登记与处置）；此前只有命令行显式 `--retriever hybrid` 才走融合，接口沿用旧值会与基线不一致。
+**v0.4 进行中**：T-021（元数据过滤 + 三条降级）、T-022（增量入库 + 质量报告）、T-023（四接口 + 状态机）、T-024（trace 导入）完成。`config.yaml` 的 `use_bm25` 由 `false` 改为 `true`，与 `CHG-007` 基线检索链对齐（追认单 `CHG-008`，含 `run_id` 规范串不含该开关的缺口登记与处置）；此前只有命令行显式 `--retriever hybrid` 才走融合，接口沿用旧值会与基线不一致。
 
 ## Implement 进度
 
@@ -30,6 +30,7 @@
 | T-011 | `src/index/bm25_index.py` | 2704 chunk 建 BM25，体积 5,442,894 字节（存分词结果 + 参数，加载时重建 `BM25Okapi`）；jieba 分词正确（「发明专利权的期限是几年」→ 发明/专利权/的/期限/是/几年）；三条查询 BM25 与向量两路均返回非空，前两条两路 top1 一致（`00012`／`00002`）；建索引 4.4 s |
 | T-022 | `src/cli/ingest.py`、`tests/test_ingest.py` | 增量入库：`text_sha256` 未变即 skip（两次运行均「待写入 0／未变 150」，`documents=150`、`chunks=2704` 不变）；`--force` 重写 150 篇后行数仍不变；批内同哈希判 `duplicate_content:<doc_id>`（语料无重复内容，路径由单测覆盖）；`ingest_log` 逐文件记 action/reason（三次运行 150+150+150 条可查）；质量报告落 `data/ingest-report.json`：字符 1,191,197、`excluded_chars` 2,205（0.19%）、含表格文档 1 篇、条号覆盖 53.8%；单测 6 例 |
 | T-023 | `src/api/{main,routes,service,errors}.py`、`tests/test_api.py`；`src/cli/ingest.py`（拆出 `run_ingest`）、`src/retrieve/hybrid.py`（`last_routes`）、`config.yaml`（`use_bm25: true`，追认单 `CHG-008`） | 四接口跑通：`/search` 200（3 条、`path=fused`、`run_id=r6c23283f2577`）、`/eval --split dev` 200（80 条、指标与基线逐项一致）、`/ingest` 连调两次均 `documents=150`／`chunks=2704`／`skipped=2`（幂等，REQ-048）、`/trace` 200 返回 3 条摘要；错误码可达：`INVALID_REQUEST` 400（空 query／`top_k=99`／未知 filter／非法 split／非法 source）、`RUN_NOT_FOUND` 404、`INDEX_EMPTY` 409（单测构造索引缺失）、`CONFIG_MISSING_KEY` 500（映射表 + `require_db_path` 路径）；OpenAPI 逐字段校验 6 个响应全通过；无 `securitySchemes`；单测 23 例（接口 20 + 契约 3） |
+| T-024 | `src/cli/import_traces.py`、`tests/test_import_traces.py` | trace.jsonl → `traces` 表：每行记 `source_run_id` 与 `imported_at`，`latency_json` 与 excerpt 原样搬；按 `(source_run_id, case_id, query_raw, hit_chunk_id, hit_rank)` **计次对账**（文件 N 次、表 M 行则补 N−M 行）——首次导入 10 条全写入，二次导入写 0、跳 10，行数稳定 10；`--rebuild` 先清该 run 再重导（实测清 4 写 10）；`--run-id` 只导指定运行；单测 9 例 |
 | T-021 | `src/retrieve/filtering.py`、`src/retrieve/hybrid.py`、`tests/test_filtering.py` | 元数据过滤（doc_id／category／authority／日期区间，候选层 oversample×5 再筛）；三条降级各有实测：`FALLBACK_BM25`（仅保留 bm25 索引时命中 5 条并标记）、`FALLBACK_RERANK_TIMEOUT`（注入 50 ms 延迟）、`FILTER_RELAXED`（`publish_from=2099-01-01` 触发放宽并标记）；`category=行政法规` 过滤后 5 条全部为行政法规；单测 7 例 |
 | v0.3 收尾 | `src/eval/mapping.py`（parent 映射）、`src/eval/runner.py`（`use_parent`）、`src/cli/eval.py`（`--parent`）、`src/split/recursive.py`（超长单元切分）、`evals/experiments-v0.3.md` | 三切分接入评测：fixed 2704／R@5 0.8875／MRR 0.6948 最优，recursive 3402／0.6875／0.5056，sliding 2918／0.8375／0.6065 → **不替换基线切分**；父子结构 3090 child／1084 parent／R@5 0.8500／MRR 0.6865 → **不启用**；分组对比用 `--run-suffix` 并列保留，holdout 未参与选型 |
 | T-020 | `src/eval/bootstrap.py`、`tests/test_bootstrap.py`、`evals/experiments-v0.3.md` | 配对 bootstrap 1000 轮：R@1 差值 +0.0125 区间 [+0.0000, +0.0375]、R@5 0.0000 [0,0]、MRR +0.0052 [−0.0031, +0.0187] —— 三项均 overlap，**不声明提升、`use_rerank` 保持 false**；延迟基线 p50 5,288.8 ms／p95 7,385.7 ms，已超 3000 ms 超时，说明 CPU 上重排多数走降级；单测 7 例 |

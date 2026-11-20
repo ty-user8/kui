@@ -103,6 +103,10 @@ class LlmConfig:
     model_env: str
     timeout_seconds: int
     max_calls: int
+    # 非密钥字面值（CHG-012）：配置里给默认模型名与接口地址，环境变量作覆盖。
+    # 缺省为空串，老配置文件不带这两个键也能加载。
+    model_name: str = ""
+    base_url: str = ""
 
 
 @dataclass(frozen=True)
@@ -290,6 +294,8 @@ def load(path: str | pathlib.Path | None = None, require_db: bool = False) -> Co
             model_env=str(_need(llm, "model_env", "llm")),
             timeout_seconds=timeout_seconds,
             max_calls=max_calls,
+            model_name=str(llm.get("model_name", "") or "").strip(),
+            base_url=str(llm.get("base_url", "") or "").strip(),
         ),
         paths=Paths(
             data_dir=_as_dir(paths_raw, "data_dir"),

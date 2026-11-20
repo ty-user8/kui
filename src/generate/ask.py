@@ -7,6 +7,9 @@
 3. `/ask` 不进任何指标、不进 CI 回归（CI workflow 里没有这一步，`metrics.json` 也不含它）；
 4. `RAG_LLM_API_KEY` 缺失直接抛 `CONFIG_MISSING_KEY`，不静默降级、不伪造答案。
 
+模型名与接口地址属非密钥（`CHG-012`）：默认取 `config.yaml` 的 `llm.model_name`／`llm.base_url`，
+`RAG_LLM_MODEL`／`RAG_LLM_BASE_URL` 有值时覆盖它们（便于临时换模型／换接口）。
+
 超时用线程 + `future.result(timeout)` 实现：Python 无法强杀线程，超时后请求线程可能仍在跑完，
 所以并发上限靠 `llm.max_calls` 配额守住，不靠线程回收。
 """
@@ -87,21 +90,34 @@ def build_context(hits: list[dict], texts: dict[str, str], limit_chars: int = CO
     return "\n".join(lines)
 
 
+def resolve_model(conf) -> str:
+    """模型名：环境变量优先（便于临时换模型），否则用 `config.yaml` 的字面值。"""
+    return os.environ.get(conf.llm.model_env, "").strip() or (getattr(conf.llm, "model_name", "") or "").strip()
+
+
+def resolve_base_url(conf) -> str:
+    """接口地址：环境变量优先，否则用 `config.yaml` 的字面值；都没有返回空串。"""
+    return os.environ.get(conf.llm.base_url_env, "").strip() or (getattr(conf.llm, "base_url", "") or "").strip()
+
+
 def _resolve_client(conf, client):
-    """没有注入 client 时按环境变量建真实客户端；缺 key / 缺模型名都在这里拦。"""
+    """没有注入 client 时按配置建真实客户端；缺 key / 缺模型名都在这里拦。"""
     if client is not None:
         return client
     api_key = os.environ.get(conf.llm.api_key_env, "").strip()
     if not api_key:
         raise AskError("CONFIG_MISSING_KEY", "环境变量 %s 未设置，/ask 需要它才能调用模型" % conf.llm.api_key_env)
-    model = os.environ.get(conf.llm.model_env, "").strip()
+    model = resolve_model(conf)
     if not model:
-        raise AskError("CONFIG_MISSING_KEY", "环境变量 %s 未设置，无法确定模型名" % conf.llm.model_env)
+        raise AskError(
+            "CONFIG_MISSING_KEY",
+            "模型名未配置：config.yaml 的 llm.model_name 为空，环境变量 %s 也未设置" % conf.llm.model_env,
+        )
     try:
         from openai import OpenAI
     except ImportError as exc:  # pragma: no cover - 依赖缺失属环境问题
         raise AskError("INTERNAL_ERROR", "openai 客户端未安装，无法调用 /ask") from exc
-    base_url = os.environ.get(conf.llm.base_url_env, "").strip() or None
+    base_url = resolve_base_url(conf) or None
     return OpenAI(api_key=api_key, base_url=base_url, timeout=conf.llm.timeout_seconds)
 
 
@@ -128,7 +144,7 @@ def ask(
         return AskResult("", [], True, [], "NO_MATCH", "", PROMPT_VERSION, 0.0)
 
     client = _resolve_client(conf, client)
-    model = os.environ.get(conf.llm.model_env, "").strip() or getattr(client, "model", "")
+    model = resolve_model(conf) or getattr(client, "model", "")
     timeout = float(timeout_s if timeout_s is not None else conf.llm.timeout_seconds)
 
     if _CALLS["n"] >= conf.llm.max_calls:

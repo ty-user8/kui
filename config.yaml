@@ -70,9 +70,13 @@ server:
   ui_port: 8501
 
 llm:
+  # 以下三个 *_env 是覆盖入口（向后兼容）：环境变量有值就用环境变量的值。
+  # 只有 key 是密钥，绝不写进文件；模型名与接口地址非密钥，写在下面的字面值里（CHG-012）。
   api_key_env: RAG_LLM_API_KEY
   base_url_env: RAG_LLM_BASE_URL
   model_env: RAG_LLM_MODEL
+  model_name: DeepSeek-V4.1-Flash-1017
+  base_url: https://api.deepseek.com
   timeout_seconds: 30
   max_calls: 50
 

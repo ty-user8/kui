@@ -5,7 +5,7 @@
 ## 技术红线
 
 1. **输入边界校验**：外部输入在入口校验——文件类型白名单（v1 仅 `.docx`）、单文件大小上限、路径穿越（拒绝 `..` 与绝对路径拼接）、OOXML 包结构（`PK\x03\x04` 开头）与 ZIP 解压规模上限。
-2. **密钥不进任何文件**：`RAG_LLM_API_KEY`、`RAG_LLM_BASE_URL`、`RAG_LLM_MODEL` 只从环境变量读取，禁止写入代码、`config.yaml`、文档、日志与 git 历史。缺变量时明确报错，不静默降级。
+2. **密钥不进任何文件**：`RAG_LLM_API_KEY` 只从环境变量读取，禁止写入代码、`config.yaml`、文档、日志与 git 历史。模型名与接口地址属**非密钥**，可写进 `config.yaml`（`llm.model_name`／`llm.base_url`）；同名环境变量 `RAG_LLM_MODEL`／`RAG_LLM_BASE_URL` 保留作覆盖（`CHG-012`）。缺 key 时明确报错，不静默降级。
 3. **DB 写操作必须事务**：`documents` / `chunks` / `parents` 的批量写入在同一事务内，失败整批回滚，禁止留下半批数据。
 4. **契约绑定 Schema**：所有工具接口、数据结构、LLM 输出均有显式 Schema（Pydantic 或 JSON Schema），校验失败按 `11-errors.md` 重试或报错，禁止静默兜底。
 5. **评测回路 0 次 LLM 调用**：检索指标、参数网格、CI 回归、holdout、参数选型全部纯计算。违反此项的结果一律作废。

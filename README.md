@@ -140,7 +140,7 @@ flowchart LR
 | --- | --- |
 | 鉴权 | **无**（单机单用户，REQ-056）：接口无 token 参数、无用户维度 |
 | 默认账号 | **无** |
-| 密钥 | 只从环境变量读（`RAG_LLM_API_KEY`／`RAG_LLM_BASE_URL`／`RAG_LLM_MODEL`），仓库内无密钥 |
+| 密钥 | **只有 key** 从环境变量读（`RAG_LLM_API_KEY`），仓库内无密钥值；模型名与接口地址属非密钥，写在 `config.yaml` 的 `llm.model_name`／`llm.base_url`，`RAG_LLM_MODEL`／`RAG_LLM_BASE_URL` 可覆盖（`CHG-012`） |
 | 删除能力 | 无删除类命令；重建索引需人工覆盖 `data/index/` |
 | 外部调用 | 仅 `/ask` 调云端模型；`eval` 与 CI **0 次**调用 |
 

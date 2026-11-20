@@ -4,9 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：回填冻结快照表 3 行「当前值」——`02-scope.md` 10465 / `6db8c0cc0b221911`、`03-architecture.md` 5453 / `fcc9ec60007e7957`（依据标 `CHG-011` 行尾归一）、`tasks.md` 8091 / `8377c4fbbd3cbb01`（依据标 `CHG-006` DoD 改后回填）；`README.md` 已知限制第 5 条改为「CI 已在真实 runner 跑通」（附 run id 与耗时），新增第 7 条「mermaid 渲染未在本机验证」。
-- 实测：3 行改后实测吻合（`wc -c` + `sha256` 前 16 位）；「冻结时」列未动；三份均不进 `run_id` 指纹，基线与 CI 不受影响（本地 `ci_check.py` 未重跑也无需重跑）。提交留在 `dev`，**不再推 `main`**（`CHG-009` 只授权交付时那一次快进推送）。
-- 待确认：`V05-09`（`/ask` 真跑）与 `V05-11`（mermaid 渲染）保持「未验证」——转通过须有实证（前者需 `RAG_LLM_API_KEY` 真跑一次，后者需看 GitHub 页面渲染），不为凑数勾选；这两项限制已写进 `README.md` 已知限制第 4、7 条。
+- 改动：`CHG-012` 改口径——`constitution` 第 2 条与 `10-security` 改为「密钥值只走环境变量，模型名与接口地址可写 `config.yaml`（非密钥）」；技术方案第 102 行原文未动，差异按 `CHG-001` 先例由本单 + `D-024` 追溯；`config.yaml` 的 `llm` 加 `model_name: DeepSeek-V4.1-Flash-1017`／`base_url: https://api.deepseek.com`，三个 `*_env` 保留作覆盖；`config.py`／`ask.py` 按「环境变量覆盖配置字面值」取值，key 仍只读 `RAG_LLM_API_KEY`。
+- 实测：单测 **124 例 OK**（121 + 3 条新增：字面值生效／env 覆盖 model／env 覆盖 base_url）；配置加载读出 `model_name=DeepSeek-V4.1-Flash-1017`、`base_url=https://api.deepseek.com`；改 `config.yaml` 后复跑评测 `run_id` 仍 `r31a95a0e1de6`、六项 0.5600／0.8600／0.9000／0.7045／0.7543／0.9000 逐位不变；`constitution.md` 新指纹 10844 / `72663e47c75dfd11` 已回填快照表。
+- 待确认：`RAG_LLM_API_KEY` 仍不在本机环境里，**`V05-09` 保持「未验证」**——key 到位后我跑一次完整 200 路径，记录模型名／耗时／引用校验结果再转「通过」；`config.yaml` 变更使 CI 的 `data` 缓存键失效，下一次运行为冷跑（多 2~3 分钟）。
 
 ## 核验方写（每轮）
 
@@ -36,8 +36,8 @@
 
 ## 待确认（开发方写）
 
-- 基线 `r31a95a0e1de6`（`CHG-011`）；`deps_sha256 = 0d407a49…20ef0`（`CHG-010`）；真实 runner 已全绿，V04-12／V05-12 已勾
-- 快照表 3 行已按实测回填（`02-scope`／`03-architecture` 归因行尾，`tasks` 归因 `CHG-006`），「冻结时」列未动；`V05-09`／`V05-11` 仍「未验证」（限制见 README 第 4、7 条）
+- 基线 `r31a95a0e1de6`（`CHG-011`）；`deps_sha256 = 0d407a49…20ef0`（`CHG-010`）；`llm` 字面值已落 `config.yaml`（`CHG-012`），key 仍只读环境变量
+- 快照表 3 行已按实测回填（`02-scope`／`03-architecture` 归因行尾，`tasks` 归因 `CHG-006`），`constitution` 随 `CHG-012` 更新为 10844 / `72663e47c75dfd11`；`V05-09`（缺 key）／`V05-11`（mermaid）仍「未验证」
 
 ## 结论（核验方写）
 

@@ -46,7 +46,10 @@ def conf_with(**llm):
 class TestAsk(unittest.TestCase):
     def setUp(self):
         ask_mod.reset_quota()
-        self._saved = {key: os.environ.pop(key, None) for key in ("RAG_LLM_API_KEY", "RAG_LLM_MODEL")}
+        self._saved = {
+            key: os.environ.pop(key, None)
+            for key in ("RAG_LLM_API_KEY", "RAG_LLM_MODEL", "RAG_LLM_BASE_URL")
+        }
         os.environ["RAG_LLM_MODEL"] = "fake-model"
 
     def tearDown(self):
@@ -87,12 +90,32 @@ class TestAsk(unittest.TestCase):
         self.assertIn("RAG_LLM_API_KEY", ctx.exception.message)
 
     def test_missing_model_name_raises_config_error(self):
+        # 新口径（CHG-012）：配置字面值为空、且 RAG_LLM_MODEL 未设，才报缺模型名
         os.environ.pop("RAG_LLM_MODEL", None)
         os.environ["RAG_LLM_API_KEY"] = "k"
         with self.assertRaises(ask_mod.AskError) as ctx:
-            ask_mod.ask(conf_with(), "期限", HITS, TEXTS)
+            ask_mod.ask(conf_with(model_name=""), "期限", HITS, TEXTS)
         self.assertEqual(ctx.exception.code, "CONFIG_MISSING_KEY")
         self.assertIn("RAG_LLM_MODEL", ctx.exception.message)
+        self.assertIn("llm.model_name", ctx.exception.message)
+
+    def test_config_literal_model_used_when_env_absent(self):
+        os.environ.pop("RAG_LLM_MODEL", None)
+        conf = conf_with(model_name="literal-model", base_url="https://conf.example")
+        result = ask_mod.ask(conf, "期限", HITS, TEXTS, client=FakeClient())
+        self.assertEqual(result.model, "literal-model")
+
+    def test_env_model_overrides_config_literal(self):
+        os.environ["RAG_LLM_MODEL"] = "env-model"
+        conf = conf_with(model_name="literal-model")
+        result = ask_mod.ask(conf, "期限", HITS, TEXTS, client=FakeClient())
+        self.assertEqual(result.model, "env-model")
+
+    def test_base_url_env_overrides_config_literal(self):
+        conf = conf_with(base_url="https://conf.example")
+        self.assertEqual(ask_mod.resolve_base_url(conf), "https://conf.example")
+        os.environ["RAG_LLM_BASE_URL"] = "https://env.example"
+        self.assertEqual(ask_mod.resolve_base_url(conf), "https://env.example")
 
     def test_quota_exhausted_refuses_call(self):
         conf = conf_with(max_calls=1)
@@ -125,7 +148,10 @@ class TestServiceWiring(unittest.TestCase):
 
     def setUp(self):
         ask_mod.reset_quota()
-        self._saved = {key: os.environ.pop(key, None) for key in ("RAG_LLM_API_KEY", "RAG_LLM_MODEL")}
+        self._saved = {
+            key: os.environ.pop(key, None)
+            for key in ("RAG_LLM_API_KEY", "RAG_LLM_MODEL", "RAG_LLM_BASE_URL")
+        }
         os.environ["RAG_LLM_MODEL"] = "fake-model"
 
     def tearDown(self):

@@ -37,11 +37,11 @@
 | --- | --- | --- |
 | `RAG_DB_PATH` | SQLite 路径 | 启动报错，不使用默认路径 |
 | `HF_HOME` | 模型缓存目录 | 回退到用户默认缓存并给出警告 |
-| `RAG_LLM_API_KEY` | `/ask` 调用凭证 | 仅 `/ask` 报 `CONFIG_MISSING_KEY`，检索不受影响（REQ-052） |
-| `RAG_LLM_BASE_URL` / `RAG_LLM_MODEL` | 接口地址与模型名 | 同上 |
+| `RAG_LLM_API_KEY` | `/ask` 调用凭证（**密钥**，只走环境变量） | 仅 `/ask` 报 `CONFIG_MISSING_KEY`，检索不受影响（REQ-052） |
+| `RAG_LLM_BASE_URL` / `RAG_LLM_MODEL` | 接口地址与模型名（非密钥）的**覆盖**入口；默认取 `config.yaml` 的 `llm.base_url`／`llm.model_name` | 与配置字面值都为空时，`/ask` 报 `CONFIG_MISSING_KEY`（`CHG-012`） |
 
-- 值不写入代码、`config.yaml`、文档、日志、git 历史。
-- 日志与 trace 只允许出现变量名，不出现值。
+- **密钥值**（`RAG_LLM_API_KEY`）不写入代码、`config.yaml`、文档、日志、git 历史。
+- 模型名与接口地址属非密钥，可写入 `config.yaml`（`CHG-012`）；为免把演示环境写死进日志，日志与 trace 仍只记变量名／配置键名，不记其取值。
 
 ## 4. 工具白名单
 

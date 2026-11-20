@@ -72,7 +72,7 @@
 | V04-09 | 接口无鉴权参数（REQ-056） | 读 `app.openapi()` | 通过：无 `securitySchemes`／`bearerAuth`／`apiKey`，四个接口均无 token 字段 |
 | V04-10 | trace 导入幂等且记 `source_run_id`／`imported_at` | `import_traces` 连跑 + `--rebuild` | 通过：首次写 10 行、二次写 0 跳 10、行数稳定 10；`--rebuild` 清 4 写 10；单测 9 例 |
 | V04-11 | CI 判定顺序（REQ-036）：复现一致 → `run_id` 未变 → 指标无退化 | 本地 `scripts/ci_check.py` | 通过（**仅本地**）：PASS ①attempt-2/3 均 576 字节逐字节一致、②`run_id=r6c23283f2577`、③六项 0.5600/0.8600/0.9000/0.7045/0.7543/0.9000；人为劣化基准 → 退出码 1 并列出 2 项退化 |
-| V04-12 | GitHub Actions workflow 可执行 | `.github/workflows/eval.yml` | **未验证**：本地只解析了 YAML 结构与 12 个步骤，逻辑与 `ci_check.py` 同源；**未在真实 GitHub runner 上跑过**，缓存命中率与首次安装 torch 的耗时均未实测 |
+| V04-12 | GitHub Actions workflow 可执行 | `.github/workflows/eval.yml` | **未验证**：本地只解析了 YAML 结构与 14 个步骤（索引阶段已拆成 ingest／向量／BM25 三步以便定位），逻辑与 `ci_check.py` 同源；**未在真实 GitHub runner 上跑过**，缓存命中率与首次安装 torch 的耗时均未实测 |
 | V04-13 | 默认检索链与 `CHG-007` 基线一致（`CHG-008`） | 默认配置重算全量 100 条 | 通过：六项与基线逐项相同；`/search` 返回 `path=fused` |
 | V04-14 | 单元测试全绿 | `unittest discover -s tests -t .` | 通过：100 例（接口 23 + 导入 9 + CI 10 + 页面 11 + 其余 47） |
 
@@ -93,4 +93,4 @@
 | V05-09 | `/ask` 用真实模型跑通 | 设 `RAG_LLM_API_KEY` 后调一次 | **待补**：开发机无 key，200 路径仅由假客户端与 service 层验证 |
 | V05-10 | 失败案例批量归因 | 读 `evals/badcases-v0.5.md` | 通过：44 条 `hit_rank != 1`（A 同条切断 8／B 相邻条干扰 31／C 跨文档 5），20 条代表案例附证据，3 条假设标未验证 |
 | V05-11 | README 架构图可渲染 | GitHub mermaid 渲染 | **未验证**：本地无渲染环境，仅做语法自查；GitHub 上实际渲染待确认 |
-| V05-12 | CI 在真实 runner 跑通 12 步并回归判定 PASS | GitHub Actions 运行记录 | **待验证**：已修 `python-version`（3.11→3.13，numpy 2.5.5 要求 ≥3.12），重推 `dev` 后观察；此前 run `44700442993`／`44700094835` 均挂在「安装依赖」 |
+| V05-12 | CI 在真实 runner 跑通 14 步并回归判定 PASS | GitHub Actions 运行记录 | **待验证**：`python-version` 已修（3.11→3.13）。run `44705199831` 已验证「安装依赖」通过，但「建索引」失败（exit 1）；索引阶段已拆为 ingest／向量／BM25 三步并加 `set -x`，重推后按新 annotation 定位 |

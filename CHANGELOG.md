@@ -121,3 +121,4 @@
 - v0.5 T-029：新增 `README.md`（快速开始、10 条常用命令、五接口、基线六项与回归口径、6 条已知限制、mermaid 架构图、安全与账号表）与 `scripts/smoke.py`（增量入库 → 索引一致性 → dev 评测 → 五接口装配，可重复执行）。冒烟连跑两次输出一致、退出码均 0；C-09「默认账号表写无」转通过。`05-modules.md` 目录树补 README 与 smoke 说明。
 - 修复（2026-11-20）：`.github/workflows/eval.yml` 的 `python-version` 由 `3.11` 改为 `3.13`。真实 run `44700442993`／`44700094835` 两次都在「安装依赖」这步 30 秒失败、后续 8 步 skipped，根因是 `requirements.lock.txt` 的 `numpy==2.5.5` 要求 Python ≥3.12（PyPI 元数据 `requires_python = >=3.12`），3.11 下 pip 无法解析；`torch==2.15.0+cpu` 在 cp311 有 x86_64 wheel，与它无关。锁文件未动，`deps_sha256` 与基线均不变；属 bug 修复，未出变更单。V04-12 仍标「未验证」，待真实 runner 跑通后再改。
 - 新增 `12-release-checklist.md` 的 v0.5 专项 12 项（V05-01~V05-12），其中 V05-09（`/ask` 真实模型）、V05-11（mermaid 渲染）、V05-12（真实 runner）如实标「待补／未验证」。
+- CI 诊断（2026-11-20）：`eval.yml` 把原「建索引」一步拆成「增量入库／构建向量索引／构建 BM25 索引」三个独立步骤，各加 `set -x`。原因：run `44705199831` 在合并步骤里 exit 1，匿名访问 job 日志 403、annotation 只给「exit code 1」，拆步后失败会直接指到具体命令。属诊断改动，锁文件、基线、默认链均未动；步骤总数 12 → 14。

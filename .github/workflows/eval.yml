@@ -84,11 +84,23 @@ jobs:
             data/rag.db
           key: data-${{ hashFiles('corpus/metadata/manifest.json', 'evals/cases.csv', 'config.yaml') }}
 
-      - name: 建索引（仅缓存未命中）
+      # 拆成三个独立步骤：失败时 annotation 直接指到某一步，不必翻整段日志
+      - name: 增量入库（仅缓存未命中）
         if: steps.data.outputs.cache-hit != 'true'
         run: |
+          set -x
           .venv/bin/python -m src.cli.ingest --source full
+
+      - name: 构建向量索引（仅缓存未命中）
+        if: steps.data.outputs.cache-hit != 'true'
+        run: |
+          set -x
           .venv/bin/python -m src.cli.build_index
+
+      - name: 构建 BM25 索引（仅缓存未命中）
+        if: steps.data.outputs.cache-hit != 'true'
+        run: |
+          set -x
           .venv/bin/python -m src.index.bm25_index
 
       - name: 单元测试

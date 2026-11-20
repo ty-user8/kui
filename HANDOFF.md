@@ -5,8 +5,8 @@
 ## 开发方写（每轮三行）
 
 - 改动：`12-release-checklist.md` 补 v0.5 专项 12 项（V05-09 `/ask` 真跑、V05-11 mermaid、V05-12 真实 runner 如实标未完成）；`.github/workflows/eval.yml` 的 `python-version` 由 `3.11` 改为 `3.13`（bug 修复，根因 `numpy==2.5.5` 要求 ≥3.12）；`CHANGELOG.md` 与 `PROGRESS.md` 记根因与两个失败 run 号。
-- 实测：PyPI 元数据确认 `numpy 2.5.5 requires_python = >=3.12`；workflow 仍解析为 12 步、`准备 Python` 步骤值 `3.13`；锁文件与 `evals/baseline.json` 未动（`deps_sha256` 不变）。
-- 待确认：已把 3 个提交推 `dev`（只 dev、不 force、不碰 main），等真实 runner 结果；V04-12 待跑通后再改标注。`/ask` 真 key 仍待补。
+- 实测：PyPI 元数据确认 `numpy 2.5.5 requires_python = >=3.12`；workflow 仍解析为 12 步、`准备 Python` 步骤值 `3.13`；索引阶段拆成 3 步后共 14 步；锁文件与 `evals/baseline.json` 未动（`deps_sha256` 不变）。
+- 待确认：拆步改动将再推 `dev` 触发一次真实 runner（只 dev、不 force、不碰 main），按新 annotation 定位失败命令；V04-12／V05-12 仍「未验证／待验证」，跑通后再改。`/ask` 真 key 仍待补。
 
 ## 核验方写（每轮）
 

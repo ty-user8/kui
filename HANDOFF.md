@@ -4,9 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：`eval.yml` 把「建索引」拆成 ingest／向量／BM25 三步并加 `set -x`（诊断用，步骤 12→14）；`12-release-checklist.md`、`PROGRESS.md`、`CHANGELOG.md` 写入 CI 根因。
-- 实测：`numpy 2.5.5` 需 Python ≥3.12；run `44705199831`「安装依赖」已通过（版本修复生效）；拆步后 run `44707436948`（5m50s，失败）annotation 指向第 12 步「构建 BM25 索引」；锁文件仅 40 个包，缺 `jieba`／`rank_bm25`／`fastapi`／`uvicorn`／`streamlit`／`openai`，`bm25_index.py` 顶部 `import jieba` 必失败。
-- 待确认：修锁方式（A 重新生成锁 + `CHG-010` + 重跑基线留痕；B 仅 CI 补装），我倾向 A；未动锁文件与基线。G4 未过门，V04-12／V05-12 仍「未验证／待验证」。
+- 改动：`CHG-010` 换锁——venv 内重生成 `requirements.lock.txt`（40 → 73 行，补 `jieba`／`rank_bm25`／`fastapi`／`uvicorn`／`streamlit`／`openai` 及传递依赖）；四处旧哈希回填（`PROGRESS.md`、`04-tech-choice.md` §3、`12-release-checklist.md` C-06／V01-09）；按 REQ-037 重跑基线；`eval.yml` 未改。
+- 实测：`deps_sha256` `ae2cc83b…d6f3` → `0d407a49…20ef0`；`attempt-4` 的 `run_id=r6c23283f2577` 不变、六项 0.5600／0.8600／0.9000／0.7045／0.7543／0.9000 与基准一致、`metrics.json` sha `ca2d0c8a…` 与前三次逐字节相同；72 个非 torch 包 PyPI 探针 71 个有 Linux 轮子，`jieba 0.42.1` 仅 sdist 但纯 Python、本地构建 `py3-none-any` 轮子成功。
+- 待确认：真实 runner 14 步是否全绿（push `dev` 后看）；未绿前 V04-12／V05-12 保持「未验证」、G4 不过门。
 
 ## 核验方写（每轮）
 
@@ -23,11 +23,11 @@
 
 ## 当前状态（开发方维护，每轮更新）
 
-- 版本：v0.4 已发布（`origin/dev` = `fd509a8`）；v0.5 进行中，T-026／T-027 完成（本地待推）
+- 版本：v0.4 已发布（`origin/dev` = `fd509a8`）；v0.5 全部任务 T-026~T-029 完成；`CHG-010` 换锁与基线重跑已完成，等真实 runner 结果
 - 门禁：G1/G2/G3 通过；CHG-001~006 已确认，001/002/003 状态行为「规格层已落地 + 剩余执行清单」
 - 权重：`.cache/models/bge-small-zh-v1.5`，指纹写入 `data/index/index-meta.json` 的 `weights_sha256`
 - 索引：全量 2704 条 512 维、5,675,789 字节（v0.1 的 34 条已重建覆盖）
-- 指标（v0.2 最终，100 条 / 融合）：R@1 0.5600／@3 0.8600／@5 0.9000、MRR 0.7045、nDCG@5 0.7543，`run_id=r5e4a62714526`（基线，CHG-007 已确认）
+- 指标（v0.2 最终，100 条 / 融合）：R@1 0.5600／@3 0.8600／@5 0.9000、MRR 0.7045、nDCG@5 0.7543，`run_id=r6c23283f2577`（基线，CHG-007 确认；`CHG-010` 换锁后重跑 `attempt-4` 数值未变）
 - 案例：BC-001 = C015（失败）；BC-002 = C010（现象）；全量语料后待复测
 - 规模：已回填实测——v0.1 14925 字/34 chunk；v0.2 150 篇/2704 chunk/1,191,197 字/索引 5.42 MB
 - 检查单：`12-release-checklist.md` v0.1 专项 8 项 + C-06/C-07 已勾选；v0.2 段待补
@@ -36,7 +36,7 @@
 
 ## 待确认（开发方写）
 
-- 基线 `r5e4a62714526`（CHG-007）；v0.3 T-016 已推送，T-017／T-018 本地待推
+- 基线 `r6c23283f2577`（CHG-007）；`CHG-010` 换锁后 `deps_sha256 = 0d407a49…20ef0`，等真实 runner 14 步全绿
 
 ## 结论（核验方写）
 

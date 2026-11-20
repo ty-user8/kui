@@ -88,7 +88,7 @@
 | 已知偏差 | 本机 CDN 剥离 `X-Repo-Commit`／`X-Linked-Etag`，`huggingface_hub` 抛 `FileMetadataError` 拒绝下载 LFS 文件；改用 `scripts/download_model.py`（D-022） |
 | wheel 校验 | 126,626,022 字节；sha256 `086f79c7…c619` 与官方索引一致 |
 | 下载方式 | 6 段并行 Range + 尾段补传，实测聚合约 215 KB/s；单连接仅 23~34 KB/s（D-020） |
-| 锁文件 | `requirements.lock.txt` 40 行；`deps_sha256 = ae2cc83b6ae374acfc373bd8fdd19c1454ae62a045d58019f2e1377c1790d6f3` |
+| 锁文件 | `requirements.lock.txt` 73 行（`CHG-010` 后；v0.1 初版为 40 行）；`deps_sha256 = 0d407a4951804399336a14e46184bad98d0ad84b53e98d0e62329ee109a20ef0` |
 
 **锁文件的 torch 行需手工规范化**：`pip freeze` 会把本地安装的 wheel 写成 `torch @ file:///…` 绝对路径，跨机器不可用。规范化由脚本执行，不手改：
 

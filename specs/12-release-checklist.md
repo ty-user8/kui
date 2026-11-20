@@ -8,10 +8,10 @@
 | --- | --- | --- | --- |
 | C-01 | 输入材料未改：SOP、技术方案、`corpus/**`（含 `manifest.json` 的 `file_name`）、`collect.py` | 与 `specs/00-source/README.md` 记录的大小与 SHA-256 比对 | 通过：技术方案 29920 / `76b18223…` 未变；manifest 150 条与 150 个文件一致（抽样 3 篇 sha256 与记录相符） |
 | C-02 | 规格快照与 `PROGRESS.md` 的「当前值」一致 | 逐文件 `sha256sum` | 待执行 |
-| C-03 | 变更单状态无「已执行」等非模板状态 | 读 `specs/changes/` 各单头部 | 通过：001~003 已确认、004~007 已完成 |
+| C-03 | 变更单状态无「已执行」等非模板状态 | 读 `specs/changes/` 各单头部 | 通过：001~003 已确认、004~010 已完成 |
 | C-04 | 交付说明文本按附录 C 扫描，扫描范围仅限 C.1 适用对象 | 关键词扫描 `src/**`、`README.md`、脚本用法文本 | 通过：`src/`、`scripts/` 扫「本文/初稿/配套/低配额版/本次改动/由…生成」零命中 |
 | C-05 | 密钥未进入任何文件与 git 历史 | `git grep -iE "sk-\|api_key="` 无命中；只出现变量名 | 通过：`src/`、`scripts/`、`specs/`、`config.yaml` 扫描零命中 |
-| C-06 | 环境一致性：`deps_sha256` 等于 `runs` 表记录值 | 读 `requirements.lock.txt` 文本哈希，**不重跑 `pip freeze`** | 通过：`ae2cc83b…d6f3` 与 `runs`／`meta.json` 一致 |
+| C-06 | 环境一致性：`deps_sha256` 等于 `runs` 表记录值 | 读 `requirements.lock.txt` 文本哈希，**不重跑 `pip freeze`** | 通过：`0d407a49…20ef0` 与 `runs`／`meta.json` 一致（`CHG-010` 换锁后重跑 `attempt-4`，2026-11-20） |
 | C-07 | `requirements.lock.txt` 已规范化（torch 行为 `torch==2.15.0+cpu`） | 跑 `scripts/normalize_lock.py`，输出「改写行数: 0」 | 通过：改写行数 0，幂等 |
 | C-08 | 无删除类命令入口 | 检查 CLI 参数与接口清单 | 通过：CLI 无 delete/rm/purge；`unlink()` 仅见于 trace 自检临时文件与下载分片清理 |
 | C-09 | 默认账号表写「无」 | `README.md` 存在该节且值为「无」 | 通过：`README.md` §9「安全与账号」列「鉴权：无」「默认账号：**无**」 |
@@ -28,7 +28,7 @@
 | V01-06 | 评测回路 LLM 调用 0 次 | 清空 `RAG_LLM_API_KEY` 后完整跑通 | 通过：key 未设置跑通，`src/` 无 openai 引用 |
 | V01-07 | 指标齐全：Recall@1/3/5、MRR、nDCG@5、HitRate@5 | `eval.py` 输出 | 通过：0.7667／0.8333／0.9667／0.8317／0.8647／0.9667 |
 | V01-08 | v0.1 语料仍为 2 篇 DOCX（未被 v0.2 的全量配置污染） | `documents` 行数 = 2 | 通过：`doc_count=2`，`chunks=34`，`source_format` 仅 docx |
-| V01-09 | `requirements.lock.txt` 与 `deps_sha256` 已记录 | 读文件与 `PROGRESS.md` | 已就绪（2026-11-17） |
+| V01-09 | `requirements.lock.txt` 与 `deps_sha256` 已记录 | 读文件与 `PROGRESS.md` | 已就绪：73 行、`0d407a49…20ef0`（`CHG-010` 换锁后取值，2026-11-20；v0.1 当时为 40 行、`ae2cc83b…d6f3`） |
 | V01-10 | 四件套 import 冒烟通过（numpy / faiss / torch / sentence-transformers） | `.venv\Scripts\python.exe -c "import numpy, faiss, torch, sentence_transformers"` | 已就绪（2026-11-17） |
 
 ## v0.2 专项

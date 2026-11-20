@@ -173,14 +173,14 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 - venv 内版本：numpy 2.5.5、faiss-cpu 1.16.0、**torch 2.15.0+cpu**（`cuda.is_available()=False`）、sentence-transformers 3.4.1（transformers 4.57.6）、python-docx 1.2.0、PyYAML 6.0.3、pydantic 2.14.3。
 - **四件套 import 冒烟通过**（同进程一次跑通）：numpy / faiss / torch / sentence-transformers；`IndexFlatIP` 自检命中正确。
 - torch wheel：官方 `download-r2` 直链，**126,626,022 字节 ≈ 120.8 MB**，sha256 `086f79c7…c619` 与官方索引一致；6 段并行下载聚合约 215 KB/s（D-020）。此前「约 220 MB」为进度估算错误，已订正。
-- 锁文件：`requirements.lock.txt` 40 行，`deps_sha256 = ae2cc83b6ae374acfc373bd8fdd19c1454ae62a045d58019f2e1377c1790d6f3`；torch 行由 `scripts/normalize_lock.py` 规范为 `torch==2.15.0+cpu`（幂等，重跑输出改写行数 0）。Verify 比对锁文件文本哈希，不重跑 `pip freeze`。
+- 锁文件：`requirements.lock.txt` **73 行**（2026-11-20 重新生成，追认单 `CHG-010`；旧 40 行为 v0.1 环境），`deps_sha256 = 0d407a4951804399336a14e46184bad98d0ad84b53e98d0e62329ee109a20ef0`；torch 行由 `scripts/normalize_lock.py` 规范为 `torch==2.15.0+cpu`（幂等，重跑输出改写行数 0）。Verify 比对锁文件文本哈希，不重跑 `pip freeze`。
 - **模型权重已就绪**：`.cache/models/bge-small-zh-v1.5/`，12 个文件、96,407,485 字节（91.9 MB）；`model.safetensors` 95,827,648 字节、sha256 `354763b9b1357bc9…` 与官方 LFS 元数据一致；6 段并行下载 372.5 s（聚合约 258 KB/s）。中断留下的 20,971,520 字节 `.part` 分片已清理，目录现为 92 MB。
 - **权重可用性已验证**：`HF_HUB_OFFLINE=1` 下加载 0.2 s、编码 2 条 0.09 s、维度 512、L2 范数 1.0。
 - **HF 下载路径偏差**：`huggingface_hub` 因 CDN 剥离 `X-Repo-Commit`／`X-Linked-Etag` 抛 `FileMetadataError`，改用 `scripts/download_model.py`（D-022）；模型目录为普通目录，加载走本地路径。
 - **索引已建**：`data/index/` 下 `faiss.idx`（69,994 字节）+ `ids.json`（1,465 字节）+ `index-meta.json`，合计 71,459 字节；34 条 512 维向量，`ntotal` 与 id 映射一致；`index-meta.json` 记模型名、revision、权重 sha256、向量数、体积、`normalizer_version`。
 - **已知现象**：固定长度切分把部分条款切断，查询「发明专利权的期限是几年」的 top-3 未含第四十二条所在段（chunk 00012 以「当予以驳回。第三十九条…」开头）。v0.1 不做切分优化，T-007 用锚点映射量化，v0.3 再改切分。
 - 工具解释器内的 faiss／numpy 不作依赖依据，也未进锁文件（CHG-004）。
-- v0.2 的 `jieba`、`rank_bm25`、v0.4 的 `fastapi`／`uvicorn`、v0.5 的 `streamlit` 尚未安装。
+- v0.2 的 `jieba`／`rank_bm25`、v0.4 的 `fastapi`／`uvicorn`、v0.5 的 `streamlit`／`openai` 均已装入 venv 并进锁文件（`CHG-010`）。
 - 迁移脚本在内存库执行通过：8 张表，`runs` 15 列含 `deps_sha256`，`traces` 10 列含 `source_run_id`／`imported_at`。
 - 目录尚未 `git init`；按版本提交规则在 v0.1 完成时建仓并只做本地 commit。
 
@@ -209,7 +209,7 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 - **push**：v0.4 已推 `origin/dev` = `fd509a8`（积压 0）；后续仍只推 `dev`，`main` 留到 v0.5 交付时按 `CHG-009` 快进推一次。
 - `CHG-008` 的缺口处置采用选项 A（靠 `attempt-N/meta.json` 的 `use_bm25` 与 `metrics.json` 的 `retriever` 区分，不改 `runs` 表、不改规范串）；选项 B（把开关纳入 `run_id` 规范串）留作下个大版本候选，届时须重定基线。
 - 非阻塞：`CHG-001/002/003` 仍为「已确认」并附剩余执行清单（随 v0.2/v0.4 落地后转已完成）；V04-12（真实 GitHub runner）保持**未验证**，等真跑过再改。
-- **CI 根因已定位（待决策）**：`requirements.lock.txt` 只有 40 个包、v0.1 生成后再未更新，缺 v0.2 起的 `jieba`／`rank_bm25`、v0.4 的 `fastapi`／`uvicorn`、v0.5 的 `streamlit`／`openai` 及传递依赖。run `44705199831` 在「安装依赖」通过后卡在合并的「建索引」；拆步后 run `44707436948`（5m50s）annotation 指向第 12 步「构建 BM25 索引」，而 `bm25_index.py` 顶部 `import jieba` —— 缺包即必失败。即使补 jieba，`单元测试`也会因缺 fastapi 失败、`回归判定`会因 BM25 索引缺失失败。
-- 处置二选一（需你拍）：**A 重新生成锁文件**（`pip freeze` 后规范化，新增 `CHG-010` 追认依赖锁变更；`deps_sha256` 变、基线数值不变，按 REQ-037 重跑一次基线留痕）；**B 只在 CI 补装**六个包（不动锁，但锁与真实环境继续不一致）。我倾向 A。
+- **CI 根因**（已处置）：`requirements.lock.txt` 只有 40 个包、v0.1 生成后再未更新，缺 v0.2 起的 `jieba`／`rank_bm25`、v0.4 的 `fastapi`／`uvicorn`、v0.5 的 `streamlit`／`openai` 及传递依赖。run `44707436948` 的 annotation 指向第 12 步「构建 BM25 索引」（`bm25_index.py` 顶部 `import jieba`）。
+- 处置：用户 2026-11-20 选 **A 重新生成锁**，已按 `CHG-010` 执行——锁 40 → 73 行、`deps_sha256` 换为 `0d407a49…20ef0`、基线重跑 `attempt-4`（`run_id` 与六项数值不变）。CI 无需加额外索引（72 个非 torch 包仅 `jieba 0.42.1` 为 sdist，纯 Python 可构建）。**待真实 runner 14 步全绿后**才把 V04-12／V05-12 从「未验证」改为「已验证」；当前 G4 不过门。
 - `12-release-checklist.md` 已补 v0.5 专项 12 项：V05-09（`/ask` 真实模型）、V05-11（mermaid 渲染）、V05-12（真实 runner）分别标「待补／未验证／待验证」。
 - 下一步：v0.5 收尾（G4 材料与 V05 逐条核对；`/ask` 接真 key 后补一次完整真跑）。

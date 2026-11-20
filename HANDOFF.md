@@ -6,7 +6,7 @@
 
 - 改动：按 `CHG-011` 根治行尾——新增 `.gitattributes`（`* text=auto eol=lf`），脚本把 54 个文本文件的 `CRLF` 逐字节改 `LF`（不改仓库 blob）；按 REQ-037 重跑基线，`evals/baseline.json` 的 `run_id` 改 `r31a95a0e1de6`、六项数值未动；`ci_check.py` 的 `FAIL` 行已加 `::error::` 前缀（上批）。
 - 实测：`git ls-files --eol` 122×`i/lf w/lf` + 150×`i/-text w/-text`，`git status` 无残留 modified、`git diff --cached` 为空；新 `run_id=r31a95a0e1de6`（`attempt-1`），六项 0.5600／0.8600／0.9000／0.7045／0.7543／0.9000 与旧基线逐位相同，`metrics.json` 576 字节 sha `d07e63d7…`；本地 `ci_check.py` 三项 PASS。
-- 待确认：真实 runner 14 步是否全绿（推后看 annotation）；另发现 `12-release-checklist.md` C-01 的技术方案尺寸/哈希自 `fd509a8`（CHG-009）起就没同步，以及行尾归一使所有文本文件的工作区字节指纹变化（blob 未变），是否按 LF 口径重登快照待你定。V04-12／V05-12 仍「未验证」，G4 不过门。
+- 待确认：CI 已全绿（run `44729212536`，6m38s，14 步全过，回归判定 16 s 通过）。剩两件待你定：① `12-release-checklist.md` C-01 的技术方案尺寸/哈希自 `fd509a8`（CHG-009）起就没同步（29920 B → 现 30041 B）；② 行尾归一后所有文本文件的工作区字节指纹变了（git blob 未变），冻结快照表是否按 LF 口径重登。V04-12／V05-12 按你的指示仍不勾、G4 不过门。
 
 ## 核验方写（每轮）
 

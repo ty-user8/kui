@@ -14,7 +14,7 @@
 | C-06 | 环境一致性：`deps_sha256` 等于 `runs` 表记录值 | 读 `requirements.lock.txt` 文本哈希，**不重跑 `pip freeze`** | 通过：`ae2cc83b…d6f3` 与 `runs`／`meta.json` 一致 |
 | C-07 | `requirements.lock.txt` 已规范化（torch 行为 `torch==2.15.0+cpu`） | 跑 `scripts/normalize_lock.py`，输出「改写行数: 0」 | 通过：改写行数 0，幂等 |
 | C-08 | 无删除类命令入口 | 检查 CLI 参数与接口清单 | 通过：CLI 无 delete/rm/purge；`unlink()` 仅见于 trace 自检临时文件与下载分片清理 |
-| C-09 | 默认账号表写「无」 | `README.md` 存在该节且值为「无」 | 未开始：`README.md` 属 v0.5（T-029），届时补 |
+| C-09 | 默认账号表写「无」 | `README.md` 存在该节且值为「无」 | 通过：`README.md` §9「安全与账号」列「鉴权：无」「默认账号：**无**」 |
 
 ## v0.1 专项
 

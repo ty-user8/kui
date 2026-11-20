@@ -6,7 +6,7 @@
 
 **v0.3 任务与收尾实验完成并推送**（T-016~T-020，另加切分与父子结构接入评测）：三处否决不启用（标题注入、rerank、recursive/sliding 与父子结构），基线切分与默认检索链保持不变。
 
-**v0.5 进行中**（2026-11-20 起）：T-026（Streamlit 单页）／T-027（`/ask` 生成层与引用校验）／T-028（失败案例归因）完成。`/ask` 真实 key 一次真跑待补。
+**v0.5 进行中**（2026-11-20 起）：T-026（Streamlit 单页）／T-027（`/ask` 生成层与引用校验）／T-028（失败案例归因）、T-029（README／架构图／冒烟）完成。`/ask` 真实 key 一次真跑待补。
 
 **v0.4 已完成并发布**（2026-11-20 G4 过门，`origin/dev` = `fd509a8`）：T-021（元数据过滤 + 三条降级）、T-022（增量入库 + 质量报告）、T-023（四接口 + 状态机）、T-024（trace 导入）、T-025（CI 回归）完成；T-026（Streamlit 单页）属 v0.5、提前实施、不进 v0.4 DoD。`config.yaml` 的 `use_bm25` 由 `false` 改为 `true`，与 `CHG-007` 基线检索链对齐（追认单 `CHG-008`，含 `run_id` 规范串不含该开关的缺口登记与处置）；此前只有命令行显式 `--retriever hybrid` 才走融合，接口沿用旧值会与基线不一致。
 
@@ -37,6 +37,7 @@
 | T-026（**归 v0.5，提前实施，不进 v0.4 DoD**） | `app.py`、`src/ui/view.py`、`tests/test_ui_view.py` | 单页跑通（Streamlit 1.67 + 官方 `AppTest` 无头执行，198 行）：首屏 6 张指标卡（基准 `r6c23283f2577`，本机 attempt-3，delta 全 +0.0000）；检索「发明专利权的期限是几年」→ 两路表 15×13（向量/BM25 排名与分数、融合排名）、最终表 5×9；打开 rerank 且超时调 20000 ms → 第三张表 5×11，子标题「已完成」，rerank 分 0.9991／0.9941，名次 +1／+2，新进候选标空原排名；保持默认超时 3000 ms 时如实回退并给 `FALLBACK_RERANK_TIMEOUT` 警告（与 T-020 延迟基线一致）；页面分数直接取自检索链，不二次加工；单测 11 例 |
 | T-027 | `src/generate/{ask,citation}.py`、`specs/08-prompts/ask.system.v1.md`、`ask.user.template.v1.md`、`src/api/{service,routes}.py`（`/ask`）、`tests/test_{ask,citation}.py` | 五条行为各有实测：缺 key → HTTP 500 `CONFIG_MISSING_KEY`（提示变量名、不降级）；空 `query`／`top_k=99` → 400 `INVALID_REQUEST`；引用越界 → `citation_valid=false`、`reason=CITATION_INVALID`、答案保留；注入 50 ms 慢客户端 → `ASK_TIMEOUT`、答案为空；无命中 → 不调模型直接 `NO_MATCH`；配额 `llm.max_calls=1` 用尽后再调抛结构化错误；`/ask` 不写 trace（调用前后 10→10 行）、CI 无 `/ask` 步骤（REQ-051）；Prompt 版本 `ask.system.v1` 随响应返回；单测 21 例（引用 8 + 生成 13，含真实索引+假模型的端到端拼装）；**真实 LLM 未跑过**（本机无 `RAG_LLM_API_KEY`），200 路径仅由假客户端与 service 层验证，接真 key 后须补一次真跑 |
 | T-028 | `evals/badcases-v0.5.md`、`data/badcases-2026-11-20.json`（本地产物） | 口径 `hit_rank != 1` 得 44 条（10 条未进 top-5、34 条 rank 2~5），按现象分三类：**A 同条被切断 8 条**（top1 与 gold 同条号、完整答案在下一块）、**B 同文档相邻条干扰 31 条**、**C 跨文档混淆 5 条**（top-5 无 gold 文档，其中 3 条 top-5 全部来自同一篇非 gold 文档）；44 条中 29 条的完整 `anchor_text` 出现在 top-5 某块、15 条任何块都找不到；报告取 20 条代表案例逐条列证据，三条假设（H1 切断计分、H2 相邻条稀释、H3 短文档被压制）全部标注未验证，处置建议为「先加内容覆盖对照口径、跨文档单独立项、不再调窗/切分」；本轮不改代码 |
+| T-029 | `README.md`、`scripts/smoke.py` | README 含快速开始（建 venv／CPU 版 torch／下权重／入库建索引／评测）、10 条常用命令表、五接口表、基线六项指标与回归口径、6 条已知限制（含 `/ask` 未真跑与 CI 未真跑）、mermaid 架构图（DOCX→parse→split→SQLite/FAISS/BM25→融合→rerank→接口/页面/generate）、安全与账号表（鉴权无、默认账号「无」）；`scripts/smoke.py` 四步：增量入库（待写入 0）→ 索引一致性（chunks 2704 = 向量 2704 = BM25 2704）→ dev 评测（80 条、unmapped 0、R@5 0.8875）→ 五接口装配；连跑两次输出一致、退出码均 0；C-09 转通过 |
 | T-021 | `src/retrieve/filtering.py`、`src/retrieve/hybrid.py`、`tests/test_filtering.py` | 元数据过滤（doc_id／category／authority／日期区间，候选层 oversample×5 再筛）；三条降级各有实测：`FALLBACK_BM25`（仅保留 bm25 索引时命中 5 条并标记）、`FALLBACK_RERANK_TIMEOUT`（注入 50 ms 延迟）、`FILTER_RELAXED`（`publish_from=2099-01-01` 触发放宽并标记）；`category=行政法规` 过滤后 5 条全部为行政法规；单测 7 例 |
 | v0.3 收尾 | `src/eval/mapping.py`（parent 映射）、`src/eval/runner.py`（`use_parent`）、`src/cli/eval.py`（`--parent`）、`src/split/recursive.py`（超长单元切分）、`evals/experiments-v0.3.md` | 三切分接入评测：fixed 2704／R@5 0.8875／MRR 0.6948 最优，recursive 3402／0.6875／0.5056，sliding 2918／0.8375／0.6065 → **不替换基线切分**；父子结构 3090 child／1084 parent／R@5 0.8500／MRR 0.6865 → **不启用**；分组对比用 `--run-suffix` 并列保留，holdout 未参与选型 |
 | T-020 | `src/eval/bootstrap.py`、`tests/test_bootstrap.py`、`evals/experiments-v0.3.md` | 配对 bootstrap 1000 轮：R@1 差值 +0.0125 区间 [+0.0000, +0.0375]、R@5 0.0000 [0,0]、MRR +0.0052 [−0.0031, +0.0187] —— 三项均 overlap，**不声明提升、`use_rerank` 保持 false**；延迟基线 p50 5,288.8 ms／p95 7,385.7 ms，已超 3000 ms 超时，说明 CPU 上重排多数走降级；单测 7 例 |
@@ -208,4 +209,4 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 - **push**：v0.4 已推 `origin/dev` = `fd509a8`（积压 0）；后续仍只推 `dev`，`main` 留到 v0.5 交付时按 `CHG-009` 快进推一次。
 - `CHG-008` 的缺口处置采用选项 A（靠 `attempt-N/meta.json` 的 `use_bm25` 与 `metrics.json` 的 `retriever` 区分，不改 `runs` 表、不改规范串）；选项 B（把开关纳入 `run_id` 规范串）留作下个大版本候选，届时须重定基线。
 - 非阻塞：`CHG-001/002/003` 仍为「已确认」并附剩余执行清单（随 v0.2/v0.4 落地后转已完成）；V04-12（真实 GitHub runner）保持**未验证**，等真跑过再改。
-- 下一步：T-029（README、架构图、冒烟脚本）；`/ask` 接真 key 后补一次完整真跑（当前 200 路径只由假客户端与 service 层验证）。
+- 下一步：v0.5 收尾（G4 材料与检查单 V05；`/ask` 接真 key 后补一次完整真跑）。

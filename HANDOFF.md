@@ -4,9 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：新增 `src/generate/{ask,citation}.py`、两份 Prompt、`tests/test_{ask,citation}.py`（21 例）、`POST /ask` 与 `service.answer`；新增 `evals/badcases-v0.5.md`（44 条归因、20 条代表案例）与 `data/badcases-2026-11-20.json`；`07-api/README`、`08-prompts/README` 明写 `/ask` 真实模型未跑过；`openai 3.57.0` 已装。
-- 实测：HTTP `/ask` 无 key → 500 `CONFIG_MISSING_KEY`、空 query／`top_k=99` → 400、`trace.jsonl` 10→10 行未写；`runner.run_eval(all)` → 44 条 `hit_rank != 1`（A 8／B 31／C 5，29 条答案在 top-5 某块）；`unittest discover` 121 例全过。
-- 待确认：`/ask` 真实 key 一次真跑待补；本地积压 1 个提交，等 paused 点推 `dev`。下一步 T-029（README、架构图、冒烟脚本）。
+- 改动：新增 `README.md`（快速开始、命令表、接口表、基线指标、6 条已知限制、mermaid 架构图、安全与账号「默认账号：无」）与 `scripts/smoke.py`（四步冒烟，可重复执行）；`05-modules` 补两处；检查单 C-09 转通过；CHANGELOG 记 `14db641` 误写与 `cfc8ef1` 重提的事实。
+- 实测：`.venv\Scripts\python.exe scripts/smoke.py` 连跑两次均退出码 0、输出一致（待写入 0、chunks/向量/BM25 均 2704、dev 80 条 unmapped 0、R@5 0.8875、五接口装配）；`unittest discover` 121 例全过。
+- 待确认：`/ask` 真 key 一次真跑仍待补；本地积压 2 个提交（`cfc8ef1`、T-029），等 paused 点推 `dev`。下一步 v0.5 收尾材料。
 
 ## 核验方写（每轮）
 

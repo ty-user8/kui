@@ -46,7 +46,7 @@ retrieval:
   rrf_k: 60
   rerank_top_n: 20
   rerank_timeout_ms: 3000
-  use_bm25: true    # v0.2 起基线检索链是「向量 + BM25 融合」（CHG-007），此处与基线对齐
+  use_bm25: true    # 默认链＝基线「向量 + BM25 融合」（CHG-007）；本值的追认与回滚见 CHG-008
   use_rerank: false  # v0.3 实验三区间重叠，未启用
 
 eval:

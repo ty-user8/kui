@@ -6,7 +6,7 @@
 
 - 改动：新增 `src/api/{main,routes,service,errors}.py`（四接口 + 固定状态机 + 错误码收口）、`tests/test_api.py`；`src/cli/ingest.py` 拆出 `run_ingest` 供接口复用；`hybrid.py` 增 `last_routes`；`config.yaml` 的 `use_bm25` 改为 `true`（对齐 CHG-007 基线）；`openapi.yaml`／`07-api/README` 补 `flags`、`score` 与 `excerpt nullable`。
 - 实测：`.venv\Scripts\python.exe -m unittest discover -s tests -t .` 0（70 例全过）；起服务后 `POST /search` 200（3 条、`path=fused`、`run_id=r6c23283f2577`）、`POST /eval {"split":"dev"}` 200（80 条，指标 0.5500／0.8500／0.8875／0.6948／0.7440 与基线一致）、`POST /ingest` 连调两次均 `documents=150`／`chunks=2704`／`skipped=2`、`GET /trace` 200；错误码 400／404／409 逐条触发；OpenAPI 逐字段校验 6 个响应全通过、无 `securitySchemes`。
-- 待确认：`config.yaml` 的 `use_bm25` 由 `false` 改为 `true`（不翻的话接口默认走单路、与基线不符；`run_id` 规范串不含该字段，所以指纹不变而指标会变）——若不认可我改回，并另出变更单说明默认链。下一步 T-024 trace 导入。
+- 待确认：push（本地积压 4 个提交：T-021／T-022／T-023／`CHG-008`），按约定等 paused 点。`use_bm25` 已由 `CHG-008` 追认，缺口处置取选项 A（不改规范串、不换基线）。下一步 T-024 trace 导入。
 
 ## 核验方写（每轮）
 

@@ -6,7 +6,7 @@
 
 **v0.3 任务与收尾实验完成并推送**（T-016~T-020，另加切分与父子结构接入评测）：三处否决不启用（标题注入、rerank、recursive/sliding 与父子结构），基线切分与默认检索链保持不变。
 
-**v0.4 进行中**：T-021（元数据过滤 + 三条降级）、T-022（增量入库 + 质量报告）、T-023（四接口 + 状态机）完成。`config.yaml` 的 `use_bm25` 由 `false` 改为 `true`，与 `CHG-007` 基线检索链对齐——此前只有命令行显式 `--retriever hybrid` 才走融合，接口沿用旧值会与基线不一致。
+**v0.4 进行中**：T-021（元数据过滤 + 三条降级）、T-022（增量入库 + 质量报告）、T-023（四接口 + 状态机）完成。`config.yaml` 的 `use_bm25` 由 `false` 改为 `true`，与 `CHG-007` 基线检索链对齐（追认单 `CHG-008`，含 `run_id` 规范串不含该开关的缺口登记与处置）；此前只有命令行显式 `--retriever hybrid` 才走融合，接口沿用旧值会与基线不一致。
 
 ## Implement 进度
 
@@ -29,7 +29,7 @@
 | T-012 | `src/retrieve/hybrid.py`、`tests/test_hybrid.py`、`tests/__init__.py` | RRF 融合 `score = Σ 1/(k+rank)`；单测 8 例全过（单路、双路求和、排序、截断、单路缺失、双路空、同路重复、k 非正）；三条查询两路与融合均非空，前两条两路 top1 一致（`00012`／`00002`），融合 top1 分数 0.03279（两路均第 1） |
 | T-011 | `src/index/bm25_index.py` | 2704 chunk 建 BM25，体积 5,442,894 字节（存分词结果 + 参数，加载时重建 `BM25Okapi`）；jieba 分词正确（「发明专利权的期限是几年」→ 发明/专利权/的/期限/是/几年）；三条查询 BM25 与向量两路均返回非空，前两条两路 top1 一致（`00012`／`00002`）；建索引 4.4 s |
 | T-022 | `src/cli/ingest.py`、`tests/test_ingest.py` | 增量入库：`text_sha256` 未变即 skip（两次运行均「待写入 0／未变 150」，`documents=150`、`chunks=2704` 不变）；`--force` 重写 150 篇后行数仍不变；批内同哈希判 `duplicate_content:<doc_id>`（语料无重复内容，路径由单测覆盖）；`ingest_log` 逐文件记 action/reason（三次运行 150+150+150 条可查）；质量报告落 `data/ingest-report.json`：字符 1,191,197、`excluded_chars` 2,205（0.19%）、含表格文档 1 篇、条号覆盖 53.8%；单测 6 例 |
-| T-023 | `src/api/{main,routes,service,errors}.py`、`tests/test_api.py`；`src/cli/ingest.py`（拆出 `run_ingest`）、`src/retrieve/hybrid.py`（`last_routes`）、`config.yaml`（`use_bm25: true`） | 四接口跑通：`/search` 200（3 条、`path=fused`、`run_id=r6c23283f2577`）、`/eval --split dev` 200（80 条、指标与基线逐项一致）、`/ingest` 连调两次均 `documents=150`／`chunks=2704`／`skipped=2`（幂等，REQ-048）、`/trace` 200 返回 3 条摘要；错误码可达：`INVALID_REQUEST` 400（空 query／`top_k=99`／未知 filter／非法 split／非法 source）、`RUN_NOT_FOUND` 404、`INDEX_EMPTY` 409（单测构造索引缺失）、`CONFIG_MISSING_KEY` 500（映射表 + `require_db_path` 路径）；OpenAPI 逐字段校验 6 个响应全通过；无 `securitySchemes`；单测 23 例（接口 20 + 契约 3） |
+| T-023 | `src/api/{main,routes,service,errors}.py`、`tests/test_api.py`；`src/cli/ingest.py`（拆出 `run_ingest`）、`src/retrieve/hybrid.py`（`last_routes`）、`config.yaml`（`use_bm25: true`，追认单 `CHG-008`） | 四接口跑通：`/search` 200（3 条、`path=fused`、`run_id=r6c23283f2577`）、`/eval --split dev` 200（80 条、指标与基线逐项一致）、`/ingest` 连调两次均 `documents=150`／`chunks=2704`／`skipped=2`（幂等，REQ-048）、`/trace` 200 返回 3 条摘要；错误码可达：`INVALID_REQUEST` 400（空 query／`top_k=99`／未知 filter／非法 split／非法 source）、`RUN_NOT_FOUND` 404、`INDEX_EMPTY` 409（单测构造索引缺失）、`CONFIG_MISSING_KEY` 500（映射表 + `require_db_path` 路径）；OpenAPI 逐字段校验 6 个响应全通过；无 `securitySchemes`；单测 23 例（接口 20 + 契约 3） |
 | T-021 | `src/retrieve/filtering.py`、`src/retrieve/hybrid.py`、`tests/test_filtering.py` | 元数据过滤（doc_id／category／authority／日期区间，候选层 oversample×5 再筛）；三条降级各有实测：`FALLBACK_BM25`（仅保留 bm25 索引时命中 5 条并标记）、`FALLBACK_RERANK_TIMEOUT`（注入 50 ms 延迟）、`FILTER_RELAXED`（`publish_from=2099-01-01` 触发放宽并标记）；`category=行政法规` 过滤后 5 条全部为行政法规；单测 7 例 |
 | v0.3 收尾 | `src/eval/mapping.py`（parent 映射）、`src/eval/runner.py`（`use_parent`）、`src/cli/eval.py`（`--parent`）、`src/split/recursive.py`（超长单元切分）、`evals/experiments-v0.3.md` | 三切分接入评测：fixed 2704／R@5 0.8875／MRR 0.6948 最优，recursive 3402／0.6875／0.5056，sliding 2918／0.8375／0.6065 → **不替换基线切分**；父子结构 3090 child／1084 parent／R@5 0.8500／MRR 0.6865 → **不启用**；分组对比用 `--run-suffix` 并列保留，holdout 未参与选型 |
 | T-020 | `src/eval/bootstrap.py`、`tests/test_bootstrap.py`、`evals/experiments-v0.3.md` | 配对 bootstrap 1000 轮：R@1 差值 +0.0125 区间 [+0.0000, +0.0375]、R@5 0.0000 [0,0]、MRR +0.0052 [−0.0031, +0.0187] —— 三项均 overlap，**不声明提升、`use_rerank` 保持 false**；延迟基线 p50 5,288.8 ms／p95 7,385.7 ms，已超 3000 ms 超时，说明 CPU 上重排多数走降级；单测 7 例 |
@@ -197,5 +197,6 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 
 ## 待确认
 
-- v0.1 已推送完成（`origin/dev` = `587cdf9`），下一步待你决定是否开 v0.2（T-010 语料扩至 150 篇，需先有 CHG-002 项一的执行与标注人力安排）。
-- 其余非阻塞事项：`CHG-001/002/003` 仍为「已确认」并附剩余执行清单（随 v0.2/v0.4 落地后转已完成）；`02-scope.md` 全量规模数字待 T-010 回填。
+- **push**：本地积压 4 个提交（T-021、T-022、T-023、`CHG-008`），按约定等 paused 点一并推 `dev`，不碰 `main`、不 force。
+- `CHG-008` 的缺口处置采用选项 A（靠 `attempt-N/meta.json` 的 `use_bm25` 与 `metrics.json` 的 `retriever` 区分，不改 `runs` 表、不改规范串）；选项 B（把开关纳入 `run_id` 规范串）留作下个大版本候选，届时须重定基线。
+- 非阻塞：`CHG-001/002/003` 仍为「已确认」并附剩余执行清单（随 v0.2/v0.4 落地后转已完成）。

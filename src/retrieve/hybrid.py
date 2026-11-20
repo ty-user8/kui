@@ -44,6 +44,8 @@ class HybridRetriever:
     rrf_k: int = DEFAULT_RRF_K
     candidate_k: int = 20
     last_flags: list[str] = field(default_factory=list)
+    # 最近一次检索的两路原始结果，供 trace 与接口响应说明「命中来自哪一路」
+    last_routes: dict[str, list[tuple[str, float]]] = field(default_factory=dict)
 
     @property
     def ready(self) -> bool:
@@ -51,17 +53,20 @@ class HybridRetriever:
 
     def search(self, query: str, top_k: int = 5) -> list[tuple[str, float]]:
         self.last_flags = []
+        self.last_routes = {"dense": [], "bm25": []}
         rankings: list[list[str]] = []
         if self.dense.ready:
             try:
-                rankings.append([chunk_id for chunk_id, _ in self.dense.search(query, self.candidate_k)])
+                self.last_routes["dense"] = self.dense.search(query, self.candidate_k)
+                rankings.append([chunk_id for chunk_id, _ in self.last_routes["dense"]])
             except Exception:
                 # 向量路调用异常：退回 BM25，不把异常抛给调用方（REQ-023）
                 self.last_flags.append("FALLBACK_BM25")
         elif self.bm25 is not None and self.bm25.ntotal > 0:
             self.last_flags.append("FALLBACK_BM25")
         if self.bm25 is not None and self.bm25.ntotal > 0:
-            rankings.append([chunk_id for chunk_id, _ in self.bm25.search(query, self.candidate_k)])
+            self.last_routes["bm25"] = self.bm25.search(query, self.candidate_k)
+            rankings.append([chunk_id for chunk_id, _ in self.last_routes["bm25"]])
         if not rankings:
             return []
         return fuse(rankings, self.rrf_k, top_k)

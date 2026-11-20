@@ -4,9 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：`src/cli/ingest.py` 改为默认增量（哈希跳过 + 批内去重 + `--force`）、逐文件写 `ingest_log`、结束输出质量报告；`decide_action` 抽成纯函数；新增 `tests/test_ingest.py`；`05-modules.md` 目录树补齐。
-- 实测：`.venv\Scripts\python.exe -m src.cli.ingest --source full` 连跑两次均「待写入 0／未变 150」、`documents=150`／`chunks=2704` 不变；`--force` 后「待写入 150」但行数仍不变，`ingest_log` 记 insert/content_changed；质量报告 `excluded_chars` 2,205（0.19%）、条号覆盖 53.8%；`unittest discover` 47 例全过。
-- 待确认：无阻塞项；本轮改动未推（累计 2 个提交），等 paused 点。下一步 T-023 状态机与四接口。
+- 改动：新增 `src/api/{main,routes,service,errors}.py`（四接口 + 固定状态机 + 错误码收口）、`tests/test_api.py`；`src/cli/ingest.py` 拆出 `run_ingest` 供接口复用；`hybrid.py` 增 `last_routes`；`config.yaml` 的 `use_bm25` 改为 `true`（对齐 CHG-007 基线）；`openapi.yaml`／`07-api/README` 补 `flags`、`score` 与 `excerpt nullable`。
+- 实测：`.venv\Scripts\python.exe -m unittest discover -s tests -t .` 0（70 例全过）；起服务后 `POST /search` 200（3 条、`path=fused`、`run_id=r6c23283f2577`）、`POST /eval {"split":"dev"}` 200（80 条，指标 0.5500／0.8500／0.8875／0.6948／0.7440 与基线一致）、`POST /ingest` 连调两次均 `documents=150`／`chunks=2704`／`skipped=2`、`GET /trace` 200；错误码 400／404／409 逐条触发；OpenAPI 逐字段校验 6 个响应全通过、无 `securitySchemes`。
+- 待确认：`config.yaml` 的 `use_bm25` 由 `false` 改为 `true`（不翻的话接口默认走单路、与基线不符；`run_id` 规范串不含该字段，所以指纹不变而指标会变）——若不认可我改回，并另出变更单说明默认链。下一步 T-024 trace 导入。
 
 ## 核验方写（每轮）
 
@@ -23,7 +23,7 @@
 
 ## 当前状态（开发方维护，每轮更新）
 
-- 版本：v0.3 已推送（`origin/dev` = `20c5c20`）；v0.4 进行中，T-021／T-022 完成（本地待推）
+- 版本：v0.3 已推送（`origin/dev` = `20c5c20`）；v0.4 进行中，T-021~T-023 完成（本地待推）
 - 门禁：G1/G2/G3 通过；CHG-001~006 已确认，001/002/003 状态行为「规格层已落地 + 剩余执行清单」
 - 权重：`.cache/models/bge-small-zh-v1.5`，指纹写入 `data/index/index-meta.json` 的 `weights_sha256`
 - 索引：全量 2704 条 512 维、5,675,789 字节（v0.1 的 34 条已重建覆盖）

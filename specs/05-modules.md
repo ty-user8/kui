@@ -44,9 +44,10 @@ rag/
 │   │   └── dao.py               # documents / chunks / runs / eval_cases / traces
 │   ├── trace.py                 # JSONL 写入与字段裁剪（≤80 字摘要）
 │   ├── api/                     # v0.4
-│   │   ├── main.py              # FastAPI 应用与启动
-│   │   ├── routes.py            # /search /eval /ingest /trace
-│   │   └── errors.py           # 错误码 → HTTP 响应
+│   │   ├── main.py              # FastAPI 应用装配、异常收口（400/404/409/500）
+│   │   ├── routes.py            # /search /eval /ingest /trace（只做校验与调用）
+│   │   ├── service.py           # 业务编排：状态机、过滤降级、run_id、trace 摘要
+│   │   └── errors.py            # 错误码 → HTTP 状态码
 │   └── generate/                # v0.5
 │       ├── ask.py               # 检索 → 拼 Prompt → 生成
 │       └── citation.py          # 引用 id 落在 top-k 的规则式校验
@@ -60,7 +61,8 @@ rag/
 │   ├── test_rerank.py           # 重排与降级单测（4 例）
 │   ├── test_bootstrap.py        # bootstrap 区间与百分位单测（7 例）
 │   ├── test_filtering.py        # 元数据过滤与降级单测（7 例）
-│   └── test_ingest.py           # 入库决策单测（6 例）
+│   ├── test_ingest.py           # 入库决策单测（6 例）
+│   └── test_api.py              # 接口层单测（20 例）
 ├── scripts/
 │   ├── normalize_lock.py        # 规范化 requirements.lock.txt 的本地 wheel 行，打印 deps_sha256
 │   ├── download_model.py        # 从官方 API 元数据下载模型权重并按 sha256 校验

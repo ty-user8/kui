@@ -181,7 +181,7 @@ components:
           type: integer
         score:
           type: number
-          description: 归一化内积（余弦）原值，-1~1
+          description: 该阶段原始分数；`dense` 为归一化内积（-1~1），`fused` 为 RRF 分，`rerank` 为交叉编码器分。跨 `path` 不可比，只在同一响应内可比
         path:
           type: string
           enum: [dense, bm25, fused, rerank]
@@ -195,6 +195,11 @@ components:
           type: string
           nullable: true
           enum: [null, NO_MATCH, FALLBACK_BM25, FILTER_RELAXED]
+        flags:
+          type: array
+          description: 本次命中的全部降级标记（`reason` 只报其中最需要用户知道的一个）
+          items:
+            type: string
         results:
           type: array
           items:
@@ -267,6 +272,8 @@ components:
         excerpt:
           type: string
           maxLength: 80
+          nullable: true
+          description: 命中 chunk 前 80 码点；手工查询无 gold 时为 null（`09-state.md` §4）
         latency_json:
           type: string
     AskResponse:

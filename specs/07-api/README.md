@@ -24,6 +24,7 @@ v0.4 起提供 4 个 HTTP 接口，v0.5 追加 `/ask`。全部 JSON 进出，字
 {
   "run_id": "r20261116-3f9a1c02b7d4",
   "reason": null,
+  "flags": [],
   "results": [
     {"chunk_id": "ff808081752b7d430175e4651cbd1547:00012", "doc_id": "ff808081752b7d430175e4651cbd1547",
      "article_no": "第四十二条", "heading_path": "第五章专利权的期限、终止和无效",
@@ -35,6 +36,8 @@ v0.4 起提供 4 个 HTTP 接口，v0.5 追加 `/ask`。全部 JSON 进出，字
 - 无结果时 `results` 为 `[]`、`reason` 为 `"NO_MATCH"`，HTTP 200（REQ-017）。
 - `score` 为归一化内积（余弦）原值，区间 −1~1，不做 0~1 映射（REQ-017a）。
 - `filters` 仅在 v0.4 生效；过滤后为空时按 REQ-025 放宽一次并在 `reason` 标 `FILTER_RELAXED`。
+- `reason` 只报一个最需要用户知道的标记（优先级：`FILTER_RELAXED` > `NO_MATCH` > `FALLBACK_BM25`）；全部标记在 `flags` 数组里，同时原样写进 trace（`09-state.md` §4）。
+- `path` 标明分数出自哪一段，`score` 只在同一响应内可比（`dense` 余弦、`fused` RRF、`rerank` 交叉编码器分）。
 
 ### POST /eval
 

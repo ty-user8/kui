@@ -4,9 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：`CHG-010` 换锁——venv 内重生成 `requirements.lock.txt`（40 → 73 行，补 `jieba`／`rank_bm25`／`fastapi`／`uvicorn`／`streamlit`／`openai` 及传递依赖）；四处旧哈希回填（`PROGRESS.md`、`04-tech-choice.md` §3、`12-release-checklist.md` C-06／V01-09）；按 REQ-037 重跑基线；`eval.yml` 未改。
-- 实测：`deps_sha256` `ae2cc83b…d6f3` → `0d407a49…20ef0`；`attempt-4` 的 `run_id=r6c23283f2577` 不变、六项 0.5600／0.8600／0.9000／0.7045／0.7543／0.9000 与基准一致、`metrics.json` sha `ca2d0c8a…` 与前三次逐字节相同；72 个非 torch 包 PyPI 探针 71 个有 Linux 轮子，`jieba 0.42.1` 仅 sdist 但纯 Python、本地构建 `py3-none-any` 轮子成功。
-- 待确认：真实 runner 14 步是否全绿（push `dev` 后看）；未绿前 V04-12／V05-12 保持「未验证」、G4 不过门。
+- 改动：`CHG-010` 换锁——venv 内重生成 `requirements.lock.txt`（40 → 73 行，补 `jieba`／`rank_bm25`／`fastapi`／`uvicorn`／`streamlit`／`openai` 及传递依赖）；四处旧哈希回填；按 REQ-037 重跑基线；`eval.yml` 未改。
+- 实测：`deps_sha256` → `0d407a49…20ef0`；`attempt-4` 的 `run_id=r6c23283f2577` 与六项指标不变、`metrics.json` 与前三次逐字节相同。真实 runner run `44715682861`（`e69eeb6`，6m05s，失败）：**14 步里 13 步过**（安装依赖 68 s、打印环境、入库、向量索引 4m11s、BM25、单元测试全绿），只有第 14 步「回归判定」exit 1（14 s）；本地同款 `ci_check.py` 三项 PASS。
+- 待确认：第 14 步失败原因未取到（匿名读日志 403、annotation 只给 exit 1）。要么你贴日志原文，要么我加一条把 `FAIL` 行打成 `::error::` 的诊断改动再推一次。V04-12／V05-12 保持「未验证」，G4 不过门。
 
 ## 核验方写（每轮）
 

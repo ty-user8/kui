@@ -200,9 +200,9 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 | 密钥 | 全工作区扫描 `sk-`／私钥头／`api_key=`／`password=` 无命中，无 `.env` 类文件 |
 | 待提交文件 | 221 |
 | 远端 | `origin` = `https://github.com/ty-user8/kui.git` |
-| 已推送 | `origin/dev` = `fd509a8586c434362f98be65c7fde033deb6f1c2`（v0.4 G4 过门点），积压 0；远端仅此一个分支 |
+| 已推送 | `origin/dev` = `e69eeb62c4e07e0363ae3e53b2201beb1204e4b5`（`CHG-010` 换锁 + 基线重跑），积压 0；远端仅此一个分支 |
 | 未推送 | `main`（本地停在 `a9ee1af`，未 push、未 force）；按 `CHG-009`，v0.5 交付时 `--ff-only` 快进推一次 |
-| 推送记录 | v0.1：`e2357e0`；v0.2：`587cdf9` → `3c43f78` → `3ec9f67`；v0.3：`407fe62`；v0.4：`20c5c20` → `fd509a8`。均只推 `dev`，`main` 未动、未 force |
+| 推送记录 | v0.1：`e2357e0`；v0.2：`587cdf9` → `3c43f78` → `3ec9f67`；v0.3：`407fe62`；v0.4：`20c5c20` → `fd509a8`；CI 修复与 `CHG-010`：`59c04a6` → `e69eeb6`。均只推 `dev`，`main` 未动、未 force |
 
 ## 待确认
 
@@ -211,5 +211,8 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 - 非阻塞：`CHG-001/002/003` 仍为「已确认」并附剩余执行清单（随 v0.2/v0.4 落地后转已完成）；V04-12（真实 GitHub runner）保持**未验证**，等真跑过再改。
 - **CI 根因**（已处置）：`requirements.lock.txt` 只有 40 个包、v0.1 生成后再未更新，缺 v0.2 起的 `jieba`／`rank_bm25`、v0.4 的 `fastapi`／`uvicorn`、v0.5 的 `streamlit`／`openai` 及传递依赖。run `44707436948` 的 annotation 指向第 12 步「构建 BM25 索引」（`bm25_index.py` 顶部 `import jieba`）。
 - 处置：用户 2026-11-20 选 **A 重新生成锁**，已按 `CHG-010` 执行——锁 40 → 73 行、`deps_sha256` 换为 `0d407a49…20ef0`、基线重跑 `attempt-4`（`run_id` 与六项数值不变）。CI 无需加额外索引（72 个非 torch 包仅 `jieba 0.42.1` 为 sdist，纯 Python 可构建）。**待真实 runner 14 步全绿后**才把 V04-12／V05-12 从「未验证」改为「已验证」；当前 G4 不过门。
+- **真实 runner 首跑（run `44715682861`，commit `e69eeb6`，6m05s，失败）**：14 步中 **13 步通过**——「安装依赖」68 s 通过（锁修复生效，缺包问题已解决）、「打印环境」`torch`／`faiss`／`sentence_transformers` 导入成功、「增量入库」3 s、「构建向量索引」4m11s、「构建 BM25 索引」3 s、「单元测试」6 s 全绿；**唯一失败是第 14 步「回归判定」**（14 s，annotation 仅「Process completed with exit code 1」）。
+- 本地同款判定（`scripts/ci_check.py`，新锁，attempt-5／6）三项全 PASS：`metrics.json` 逐字节一致（576 字节）、`run_id=r6c23283f2577` 未变、六项无退化。
+- 第 14 步失败原因**未取到**：未认证访问 job 日志被 403 拒绝（`Must have admin rights to Repository`），annotation 不含 stdout。两种取因方式待选：① 由用户在网页上把「回归判定」这一步的日志贴回；② 加一条诊断改动，把 `ci_check.py` 输出里的 `FAIL` 行打成 `::error::` annotation（推一次即可匿名读到）。猜因（未验证）：Linux 与 Windows 的浮点/BLAS 差异使边界用例名次翻转，触发 FAIL ③ 指标退化——若是，属基线口径问题（基准在 Windows 上测），须你定处置，不在我这边擅自放宽容差。
 - `12-release-checklist.md` 已补 v0.5 专项 12 项：V05-09（`/ask` 真实模型）、V05-11（mermaid 渲染）、V05-12（真实 runner）分别标「待补／未验证／待验证」。
 - 下一步：v0.5 收尾（G4 材料与 V05 逐条核对；`/ask` 接真 key 后补一次完整真跑）。

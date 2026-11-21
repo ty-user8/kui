@@ -102,11 +102,39 @@ $env:HF_HOME = ".cache/models"
 4. **`/ask` 已接真实模型跑通，但运行时仍要 key**：2026-11-21 用 `deepseek-flash`（`config.yaml` 的 `llm.model_name`，接口 `https://api.deepseek.com`）实测两条 query，均 HTTP 200、耗时 3152～7009 ms、引用校验 `valid=true` 无越界；`RAG_LLM_API_KEY` 仍须在运行时用环境变量提供，未设置时 `/ask` 返回 `CONFIG_MISSING_KEY`。
 5. **CI 已在真实 runner 跑通，但首跑要装依赖**：`eval-regression` 14 步在 GitHub Actions 全绿（run `44729212536`，6m38s；缓存命中场景约 50 s）。冷缓存首次需装 torch（约 120 MB）并重建索引，耗时 6~7 分钟。
 6. **v0.1 语料规模过小**（2 篇 / 34 chunk），其指标不可用于判断检索质量。
-7. **架构图渲染未在本机验证**：第 8 节的 mermaid 只做了语法自查，本机无渲染环境；GitHub 页面上的实际渲染待确认。
+7. **架构图以 ASCII 框图呈现**：第 8 节放在 text 代码块里（三反引号 + text），不依赖在线渲染服务；mermaid 源码同样以文本形式附后，复制到任意渲染器可用。此前三次让 GitHub 渲染 mermaid 均报 `Unable to render rich display`，故改为降级写法。
 
 ## 8. 架构
 
-```mermaid
+以纯文本框图呈现（不依赖 GitHub 的 mermaid 在线渲染），内容与原图一致；mermaid 源码附在末尾供复制。
+
+```text
+入库（一次性）
+  corpus 150 篇 DOCX
+    -> parse      基准文本 + 段落字符区间（字符守恒校验）
+    -> split      512 字固定窗口，64 字重叠
+    -> SQLite     documents / chunks
+    -> embed      bge-small-zh-v1.5 -> FAISS（2704 x 512 维）
+    -> tokenize   jieba + BM25      -> bm25.pkl
+
+检索（每次请求）
+  query
+    -> 归一化（NFKC + 空白折叠 + L2）
+       |- 向量路：FAISS top-20 --+
+       `- 稀疏路：BM25  top-20 --+-> RRF 融合（k=60）
+    -> rerank？（默认关；CPU 上超 3 秒熔断即回退融合序）
+    -> top-k（默认 5）
+
+出口
+  /search      检索结果（含 path / flags / 降级标记）
+  /eval        评测 -> runs/metrics.json -> ci_check 基线比对
+  /ask         检索 + 生成 + 引用校验（需 RAG_LLM_API_KEY）
+  Streamlit    单页：两路对照 / 融合 / rerank 前后名次变化
+```
+
+mermaid 源码（可复制到任意 mermaid 渲染器；本文件不再用它渲染）：
+
+```text
 flowchart LR
   A["corpus DOCX 150 篇"] --> B["parse 基准文本 + 段落区间"]
   B --> C["split 512 + 64 固定窗口"]

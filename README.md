@@ -124,10 +124,10 @@ flowchart LR
     K -->|开| L[bge-reranker-base]
     K -->|关| M[top-k]
     L --> M
-    M --> N[/search/]
-    M --> O[/eval/]
+    M --> N["/search/"]
+    M --> O["/eval/"]
     M --> P[Streamlit 单页]
-    M --> R[/ask/<br/>v0.5]
+    M --> R["/ask/<br/>v0.5"]
     R --> S[引用校验<br/>规则式]
     D --> O
     O --> T[(runs/<br/>metrics.json)]

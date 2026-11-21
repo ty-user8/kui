@@ -67,8 +67,10 @@
 
 删 `config.yaml` 的两个字面值字段、`LlmConfig` 的两字段与 `resolve_*` 两函数，恢复三处规格措辞与那条用例；`run_id`、基线、锁文件均不涉及，回滚不改数值。
 
-## 执行记录（2026-11-20）
+## 执行记录（2026-11-20 / 11-21）
 
 - 已完成：三处规格改写、`config.yaml` 增两字段、`LlmConfig`／`ask.py` 取值优先级、单测调整与新增。
 - CI 缓存：`config.yaml` 变更后 `data` 缓存键失效，下一次运行为冷跑。
-- 未完成：真实模型调用（环境无 `RAG_LLM_API_KEY`），`V05-09` 保持「未验证」。
+- **模型名字面值修正（2026-11-21）**：初值 `DeepSeek-V4.1-Flash-1017` 首次真实调用返回 400——「The supported API model names are deepseek-flash, deepseek-v4-pro」（request_id `43f6a4d0-0f9c-48c5-b71c-68ccf653e10a`），按「以接口实际支持为准」改为 `deepseek-flash`；`base_url` 不变。
+- **`V05-09` 验证（2026-11-21）**：真实 key 走 `POST /ask` 两条 query 均 200，耗时 3152.4 ms／7008.7 ms，`citation_valid=true`、无越界引用；该项已转「通过」。
+- `specs/00-source/` 第 102 行仍未改动；`C-01` 结论不变。

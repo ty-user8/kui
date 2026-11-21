@@ -90,7 +90,7 @@
 | V05-06 | 引用越界标记且答案不丢 | 单测：答案引用不在 top-k 的 id | 通过：`citation_valid=false`、`reason=CITATION_INVALID`、原答案保留 |
 | V05-07 | 调用配额生效 | 单测把 `llm.max_calls` 设为 1 后连调两次 | 通过：第二次抛结构化错误，计数停在第 1 次 |
 | V05-08 | `/ask` 不进指标、不进 CI | 调用前后比对 `trace.jsonl`；查 workflow 步骤 | 通过：trace 10→10 行未写；workflow 12 步中无 `/ask` |
-| V05-09 | `/ask` 用真实模型跑通 | 设 `RAG_LLM_API_KEY` 后调一次 | **待补**：开发机无 key，200 路径仅由假客户端与 service 层验证 |
+| V05-09 | `/ask` 用真实模型跑通 | 设 `RAG_LLM_API_KEY` 后调一次 | **通过**（2026-11-21）：模型 `deepseek-flash`（取自 `config.yaml` 的 `llm.model_name`，接口返回的可用名）、接口 `https://api.deepseek.com`；两条 query 均 HTTP 200——「发明专利权的期限是几年」耗时 3152.4 ms、「假冒专利要承担什么法律责任」7008.7 ms（均 < 30 s 超时阈值）；`citation_valid=true`、`invalid_citations=null`（无越界），引用均落在本次 top-5 内，`prompt_version=ask.system.v1`、`reason=null` |
 | V05-10 | 失败案例批量归因 | 读 `evals/badcases-v0.5.md` | 通过：44 条 `hit_rank != 1`（A 同条切断 8／B 相邻条干扰 31／C 跨文档 5），20 条代表案例附证据，3 条假设标未验证 |
 | V05-11 | README 架构图可渲染 | GitHub mermaid 渲染 | **未验证**：本地无渲染环境，仅做语法自查；GitHub 上实际渲染待确认 |
 | V05-12 | CI 在真实 runner 跑通 14 步并回归判定 PASS | GitHub Actions 运行记录 | **通过**：run `44729212536`（6m38s）14 步全过、「回归判定」16 s PASS（①`attempt` 逐字节一致 ②`run_id=r31a95a0e1de6` 与基准一致 ③六项无退化）；缓存命中场景 `44730458215`／`44730971072` 亦 51 s 全过 |

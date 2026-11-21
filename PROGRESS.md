@@ -210,7 +210,7 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 | --- | --- |
 | 门禁 | **通过**（2026-11-20，用户判定「过 G4，按订正后交付」） |
 | 解锁条件 | `V04-12`／`V05-12` 由「未验证」转「通过」：真实 runner run `44729212536` 14 步全绿、回归判定 PASS；缓存命中复跑 `44730458215`／`44730971072` 亦全绿 |
-| 仍如实保留 | `V05-09`（`/ask` 真实模型，无 key 未真跑）、`V05-11`（本地无 mermaid 渲染环境） |
+| 仍如实保留 | `V05-11`（本地无 mermaid 渲染环境，待 GitHub 页面确认）；`V05-09` 已于 2026-11-21 真实模型跑通并转「通过」 |
 | 快照表 | 只改 `evals/cases.csv` 当前值为 LF/blob 口径；另有 3 行实测不符已列在「待确认」，未擅自改 |
 | 交付动作 | 按 `CHG-009`：`dev` 快进合并到 `main` 并推一次，不 force、不 amend、不 rebase |
 
@@ -231,6 +231,7 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 - **订正（我此前判断有误，已核实）**：`12-release-checklist.md` C-01 的比对对象是 `specs/00-source/` 的**只读归档副本**，实测 29920 B / `76b18223f807fff0`、CRLF=0，与记录一致且行尾归一无影响；根目录那份 30041 B 是工作副本（`fd509a8` 随 `CHG-009` 改过 §2.1），**不是** C-01 的输入材料——C-01 不改。冻结快照表按指示只改 `evals/cases.csv` 当前值（44614 / `27fc0a8803608809`，依据列标 `CHG-011`），「冻结时」列与其他条目未动。
 - **快照表已回填（2026-11-20，用户授权）**：3 行「当前值」按实测改为 `02-scope.md` 10465 / `6db8c0cc0b221911`、`03-architecture.md` 5453 / `fcc9ec60007e7957`（两者依据标「CHG-011：行尾归一，与 blob 口径对齐」，原值是归一前 CRLF 字节）；`tasks.md` 8091 / `8377c4fbbd3cbb01`（依据标「CHG-006：T-010 DoD 改后回填」，与行尾无关）。「冻结时」列与其他条目未动；这三份不进 `run_id` 指纹，基线／CI 不受影响。此前 9 行实测中其余 6 行吻合。
 - **`CHG-012` 落地后的 CI 冷跑（run `44764582340`，commit `af72878`，5m41s，success）**：`config.yaml` 变更使 `data` 缓存键失效，如预期重建——venv 与权重缓存命中（安装依赖与下载权重两步 skipped），入库 4 s、向量索引 4m35s、BM25 4 s、单测 8 s、回归判定 17 s PASS；post 步骤已把新键的索引与库缓存写回，下一次为快跑。
-- 当前唯一未验证项：`V05-09`（`/ask` 真实模型）——本机 `RAG_LLM_API_KEY` 仍为空，key 到位后跑一次完整 200 路径并记录「模型名／耗时／引用校验」三样再转「通过」；`V05-11`（mermaid 渲染）同样待 GitHub 页面确认。
+- **`V05-09` 已通过（2026-11-21）**：真实 key（用户级环境变量，进程内 35 字符、未落盘）走 `POST /ask` 两次均 HTTP 200。**模型名按接口实际值修正**——首次用 `DeepSeek-V4.1-Flash-1017` 返回 400「The supported API model names are deepseek-flash, deepseek-v4-pro」（request_id `43f6a4d0-…`），按用户「以接口实际支持为准」的口径改为 `deepseek-flash`，接口 `https://api.deepseek.com`。实测：`发明专利权的期限是几年` 3152.4 ms、`假冒专利要承担什么法律责任` 7008.7 ms（均 < 30 s）；两次 `citation_valid=true`、`invalid_citations=null`（无越界），引用均落在本次 top-5，`prompt_version=ask.system.v1`、`reason=null`，答案带条款依据。
+- 当前唯一未验证项：`V05-11`（mermaid 渲染）——本机无渲染环境，需 GitHub 页面确认。
 - `12-release-checklist.md` 已补 v0.5 专项 12 项：V05-09（`/ask` 真实模型）、V05-11（mermaid 渲染）、V05-12（真实 runner）分别标「待补／未验证／待验证」。
 - 下一步：v0.5 收尾（G4 材料与 V05 逐条核对；`/ask` 接真 key 后补一次完整真跑）。

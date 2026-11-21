@@ -108,12 +108,12 @@ $env:HF_HOME = ".cache/models"
 
 ```mermaid
 flowchart LR
-  A["corpus/*.docx（150 篇）"] --> B["parse 基准文本 + 段落区间"]
-  B --> C["split 512/64 固定窗口"]
-  C --> D["SQLite documents/chunks"]
+  A["corpus DOCX 150 篇"] --> B["parse 基准文本 + 段落区间"]
+  B --> C["split 512 + 64 固定窗口"]
+  C --> D["SQLite documents chunks"]
   C --> E["embed bge-small-zh-v1.5"]
   C --> F["tokenize jieba + BM25"]
-  E --> G["FAISS 2704x512"]
+  E --> G["FAISS 2704 x 512"]
   F --> H["bm25.pkl"]
   Q["query"] --> I["归一化"]
   I --> G
@@ -124,13 +124,13 @@ flowchart LR
   K -->|开| L["bge-reranker-base"]
   K -->|关| M["top-k"]
   L --> M
-  M --> N["/search/"]
-  M --> O["/eval/"]
+  M --> N["search 接口"]
+  M --> O["eval 接口"]
   M --> P["Streamlit 单页"]
-  M --> R["/ask/ v0.5"]
+  M --> R["ask 接口 v0.5"]
   R --> S["引用校验 规则式"]
   D --> O
-  O --> T["runs/ metrics.json"]
+  O --> T["runs metrics.json"]
   T --> U["ci_check 基线比对"]
 ```
 

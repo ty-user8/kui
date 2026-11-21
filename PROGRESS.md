@@ -200,9 +200,9 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 | 密钥 | 全工作区扫描 `sk-`／私钥头／`api_key=`／`password=` 无命中，无 `.env` 类文件 |
 | 待提交文件 | 221 |
 | 远端 | `origin` = `https://github.com/ty-user8/kui.git` |
-| 已推送 | `origin/dev` = `638456a05f99c5a17222ac4dd976318254e85c5f`，`origin/main` = 同一提交；积压 0 |
+| 已推送 | `origin/dev` 与 `origin/main` 均为 `4d319cac63e3b67516a6c59e668a92bf6658441c`（V05-11 降级写法 + README 事实校正）；积压 0 |
 | 未推送 | 无。`main` 已按 `CHG-009` 于 v0.5 交付时 `--ff-only` 快进推送一次（`a9ee1af` → `138d1d3`），未 force、未 amend、未 rebase |
-| 推送记录 | v0.1：`e2357e0`；v0.2：`587cdf9` → `3c43f78` → `3ec9f67`；v0.3：`407fe62`；v0.4：`20c5c20` → `fd509a8`；CI 修复与 `CHG-010`：`59c04a6` → `e69eeb6`；诊断与 `CHG-011`：`01bf29a` → `2b0deff` → `62b2425` → `43eabc4`；CI 全绿记录 `8df26ab` → `479575e`；首次交付 `138d1d3`（dev 与 main 同点）；**`CHG-012` 与 V05-09 落地后第二次 main 快进：`138d1d3` → `638456a`**（`dev` 与 `main` 同点）。全程不 force、不 amend、不 rebase |
+| 推送记录 | v0.1：`e2357e0`；v0.2：`587cdf9` → `3c43f78` → `3ec9f67`；v0.3：`407fe62`；v0.4：`20c5c20` → `fd509a8`；CI 修复与 `CHG-010`：`59c04a6` → `e69eeb6`；诊断与 `CHG-011`：`01bf29a` → `2b0deff` → `62b2425` → `43eabc4`；CI 全绿记录 `8df26ab` → `479575e`；首次交付 `138d1d3`（dev 与 main 同点）；**`CHG-012` 与 V05-09 落地后第二次 main 快进：`138d1d3` → `638456a`**；**V05-11 降级写法后第三次 main 快进：`638456a` → `4d319ca`**（`dev` 与 `main` 同点）。全程不 force、不 amend、不 rebase |
 
 ## G4 结论（v0.5）
 

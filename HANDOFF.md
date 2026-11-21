@@ -4,9 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：`main` 第二次快进（`CHG-012` 与 V05-09 落地后同步）——`138d1d3` → **`638456a`**，推前 `merge-base --is-ancestor main dev` 退出码 0；新增 `D-025` 澄清 `CHG-009` 的「只推一次」只约束日常记录类提交。**V05-11 未通过**：README 架构图在 GitHub 上仍报 `Unable to render rich display`，三次尝试见检查单。
-- 实测：`git ls-remote --heads origin` → `dev` 与 `main` 同为 `638456a05f99c5a17222ac4dd976318254e85c5f`；mermaid 侧——首轮报 `Lexical error on line 21`（`R[/ask/<br/>v0.5]` 的 `/` 被当成平行四边形起始），改引号矩形、再去斜杠星号后仍报同一句通用错误；同一源码 `mermaid@10` 本地 `parse` 为 `PARSE OK`，故非语法问题。
-- 待确认：`V05-11` 仍未通过——请在你侧正常网络打开 `main` 的 README 第 8 节肉眼确认（本环境经代理访问 `viewscreen.githubusercontent.com`，疑为渲染侧超时）；若你侧也不渲染，我改用「ASCII 框图 + 可选 mermaid」的降级写法。未 force／未 amend／未 rebase。
+- 改动：`V05-11` 收尾用降级写法——README 第 8 节改为 `text` 代码块的 ASCII 框图（入库／检索／出口三段，150 篇、2704 chunk、向量+BM25、RRF k=60、五接口、引用校验齐全），mermaid 源码以文本形式附后不再触发渲染；已知限制第 7 条同步；顺手校正两处过期数字（基线 `r6c23283f2577` → `r31a95a0e1de6`、单测 121 → 124）。检查单 `V05-11` 转「通过（降级写法）」。
+- 实测：`main` 第三次快进 `638456a` → **`4d319ca`**（推前 `is-ancestor` 退出码 0，`dev` 领先 3 个提交），`git ls-remote` 显示 `dev` 与 `main` 同点 `4d319cac63e3b67516a6c59e668a92bf6658441c`；GitHub 页面复核第 8 节已是纯文本块、无 `Unable to render` 横幅。纯文档改动，单测/CI 判定未受影响。
+- 待确认：项目收尾——`V05-09`／`V05-11`／`V05-12` 全部关闭；仅余维护期事项（`CHG-012` 后 `data` 缓存键会随下次 `config.yaml` 变动再冷跑一次）。未 force／未 amend／未 rebase。
 
 ## 核验方写（每轮）
 

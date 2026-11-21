@@ -94,7 +94,7 @@ $env:HF_HOME = ".cache/models"
 - 回归口径：计数型指标任何下降即 fail，连续型允许 1e-6 容差；判定顺序为「两次 attempt 逐字节一致 → `run_id` 未变 → 指标无退化」。见 `scripts/ci_check.py`。
 - 改语料、用例、切分或依赖锁属**有意变更**，须在新配置上重跑基线并走变更单，不按回归失败处理。
 
-## 7. 已知限制（如实列出）
+## 7. 已知限制
 
 1. **固定窗口会切断条款**：44 条 `hit_rank != 1` 的用例里，8 条是「命中块与 gold 同条、正文被切到下一块」。归因与证据见 [`evals/badcases-v0.5.md`](evals/badcases-v0.5.md)。v0.3 试过的 recursive / sliding / 父子结构指标均更低，未启用。
 2. **跨文档混淆 5 条**：短法规在向量空间被同主题长文档压制；文档级召回尚未实现。
@@ -102,11 +102,8 @@ $env:HF_HOME = ".cache/models"
 4. **`/ask` 已接真实模型跑通，但运行时仍要 key**：2026-11-21 用 `deepseek-flash`（`config.yaml` 的 `llm.model_name`，接口 `https://api.deepseek.com`）实测两条 query，均 HTTP 200、耗时 3152～7009 ms、引用校验 `valid=true` 无越界；`RAG_LLM_API_KEY` 仍须在运行时用环境变量提供，未设置时 `/ask` 返回 `CONFIG_MISSING_KEY`。
 5. **CI 已在真实 runner 跑通，但首跑要装依赖**：`eval-regression` 14 步在 GitHub Actions 全绿（run `44729212536`，6m38s；缓存命中场景约 50 s）。冷缓存首次需装 torch（约 120 MB）并重建索引，耗时 6~7 分钟。
 6. **v0.1 语料规模过小**（2 篇 / 34 chunk），其指标不可用于判断检索质量。
-7. **架构图以 ASCII 框图呈现**：第 8 节放在 text 代码块里（三反引号 + text），不依赖在线渲染服务；mermaid 源码同样以文本形式附后，复制到任意渲染器可用。此前三次让 GitHub 渲染 mermaid 均报 `Unable to render rich display`，故改为降级写法。
 
 ## 8. 架构
-
-以纯文本框图呈现（不依赖 GitHub 的 mermaid 在线渲染），内容与原图一致；mermaid 源码附在末尾供复制。
 
 ```text
 入库（一次性）
@@ -132,7 +129,7 @@ $env:HF_HOME = ".cache/models"
   Streamlit    单页：两路对照 / 融合 / rerank 前后名次变化
 ```
 
-mermaid 源码（可复制到任意 mermaid 渲染器；本文件不再用它渲染）：
+mermaid 源码（可复制到任意 mermaid 渲染器）：
 
 ```text
 flowchart LR

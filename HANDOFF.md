@@ -4,9 +4,9 @@
 
 ## 开发方写（每轮三行）
 
-- 改动：跑 `V05-09`——真实 key（用户级环境变量，只在进程内用，未落盘）走 `POST /ask`；模型名按接口实际值把 `config.yaml` 的 `llm.model_name` 由 `DeepSeek-V4.1-Flash-1017` 改为 **`deepseek-flash`**（首次调用返回 400「supported API model names are deepseek-flash, deepseek-v4-pro」）；检查单 `V05-09` 转「通过」，`README` 已知限制第 4 条改为如实描述。未动代码。
-- 实测：两条 query 均 HTTP 200——「发明专利权的期限是几年」3152.4 ms、「假冒专利要承担什么法律责任」7008.7 ms（< 30 s 阈值）；两次 `citation_valid=true`、`invalid_citations=null`（无越界），引用均在本次 top-5 内，`prompt_version=ask.system.v1`、`reason=null`；`base_url` 仍是 `https://api.deepseek.com`。
-- 待确认：`V05-11`（mermaid 渲染）是最后一项未验证，需 GitHub 页面确认；`RAG_LLM_MODEL`／`RAG_LLM_BASE_URL` 保持不设（模型名与地址从 `config.yaml` 读）；CI 因 `config.yaml` 再变又要冷跑一次索引。
+- 改动：`main` 第二次快进（`CHG-012` 与 V05-09 落地后同步）——`138d1d3` → **`638456a`**，推前 `merge-base --is-ancestor main dev` 退出码 0；新增 `D-025` 澄清 `CHG-009` 的「只推一次」只约束日常记录类提交。**V05-11 未通过**：README 架构图在 GitHub 上仍报 `Unable to render rich display`，三次尝试见检查单。
+- 实测：`git ls-remote --heads origin` → `dev` 与 `main` 同为 `638456a05f99c5a17222ac4dd976318254e85c5f`；mermaid 侧——首轮报 `Lexical error on line 21`（`R[/ask/<br/>v0.5]` 的 `/` 被当成平行四边形起始），改引号矩形、再去斜杠星号后仍报同一句通用错误；同一源码 `mermaid@10` 本地 `parse` 为 `PARSE OK`，故非语法问题。
+- 待确认：`V05-11` 仍未通过——请在你侧正常网络打开 `main` 的 README 第 8 节肉眼确认（本环境经代理访问 `viewscreen.githubusercontent.com`，疑为渲染侧超时）；若你侧也不渲染，我改用「ASCII 框图 + 可选 mermaid」的降级写法。未 force／未 amend／未 rebase。
 
 ## 核验方写（每轮）
 
@@ -32,7 +32,8 @@
 - 规模：已回填实测——v0.1 14925 字/34 chunk；v0.2 150 篇/2704 chunk/1,191,197 字/索引 5.42 MB
 - 检查单：`12-release-checklist.md` 通用项 C-01~C-09、v0.1~v0.5 专项已逐条核对；`V05-09`（`/ask` 真实模型）与 `V05-11`（mermaid 渲染）如实保留「未验证」
 - 仓库：`git init -b main`，提交 `a9ee1af`；`dev` 已建并推送
-- 远端：`origin` = `https://github.com/ty-user8/kui.git`；`origin/dev` 与 `origin/main` 均停在 `138d1d3`（v0.5 交付点，`main` 由 `a9ee1af` 快进而来，未 force／amend／rebase）
+- 远端：`origin/dev` 与 `origin/main` 均为 `638456a`；`main` 已两次快进（首次交付 `138d1d3`，`CHG-012` 后 `638456a`），口径见 `D-025`
+- 未验证：`V05-11`（README mermaid 渲染）——页面实测失败，本地语法通过，疑为渲染侧；`V05-09` 已通过
 
 ## 待确认（开发方写）
 

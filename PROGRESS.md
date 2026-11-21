@@ -200,9 +200,9 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 | 密钥 | 全工作区扫描 `sk-`／私钥头／`api_key=`／`password=` 无命中，无 `.env` 类文件 |
 | 待提交文件 | 221 |
 | 远端 | `origin` = `https://github.com/ty-user8/kui.git` |
-| 已推送 | `origin/dev` = `138d1d35ff1f2c9088aa5de92fccb7472d474115`（G4 过门点），`origin/main` = 同一提交；积压 0 |
+| 已推送 | `origin/dev` = `638456a05f99c5a17222ac4dd976318254e85c5f`，`origin/main` = 同一提交；积压 0 |
 | 未推送 | 无。`main` 已按 `CHG-009` 于 v0.5 交付时 `--ff-only` 快进推送一次（`a9ee1af` → `138d1d3`），未 force、未 amend、未 rebase |
-| 推送记录 | v0.1：`e2357e0`；v0.2：`587cdf9` → `3c43f78` → `3ec9f67`；v0.3：`407fe62`；v0.4：`20c5c20` → `fd509a8`；CI 修复与 `CHG-010`：`59c04a6` → `e69eeb6`；诊断与 `CHG-011`：`01bf29a` → `2b0deff` → `62b2425` → `43eabc4`；CI 全绿记录 `8df26ab` → `479575e`；**交付 `138d1d3`（dev 与 main 同点）**。全程不 force |
+| 推送记录 | v0.1：`e2357e0`；v0.2：`587cdf9` → `3c43f78` → `3ec9f67`；v0.3：`407fe62`；v0.4：`20c5c20` → `fd509a8`；CI 修复与 `CHG-010`：`59c04a6` → `e69eeb6`；诊断与 `CHG-011`：`01bf29a` → `2b0deff` → `62b2425` → `43eabc4`；CI 全绿记录 `8df26ab` → `479575e`；首次交付 `138d1d3`（dev 与 main 同点）；**`CHG-012` 与 V05-09 落地后第二次 main 快进：`138d1d3` → `638456a`**（`dev` 与 `main` 同点）。全程不 force、不 amend、不 rebase |
 
 ## G4 结论（v0.5）
 
@@ -232,6 +232,7 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 - **快照表已回填（2026-11-20，用户授权）**：3 行「当前值」按实测改为 `02-scope.md` 10465 / `6db8c0cc0b221911`、`03-architecture.md` 5453 / `fcc9ec60007e7957`（两者依据标「CHG-011：行尾归一，与 blob 口径对齐」，原值是归一前 CRLF 字节）；`tasks.md` 8091 / `8377c4fbbd3cbb01`（依据标「CHG-006：T-010 DoD 改后回填」，与行尾无关）。「冻结时」列与其他条目未动；这三份不进 `run_id` 指纹，基线／CI 不受影响。此前 9 行实测中其余 6 行吻合。
 - **`CHG-012` 落地后的 CI 冷跑（run `44764582340`，commit `af72878`，5m41s，success）**：`config.yaml` 变更使 `data` 缓存键失效，如预期重建——venv 与权重缓存命中（安装依赖与下载权重两步 skipped），入库 4 s、向量索引 4m35s、BM25 4 s、单测 8 s、回归判定 17 s PASS；post 步骤已把新键的索引与库缓存写回，下一次为快跑。
 - **`V05-09` 已通过（2026-11-21）**：真实 key（用户级环境变量，进程内 35 字符、未落盘）走 `POST /ask` 两次均 HTTP 200。**模型名按接口实际值修正**——首次用 `DeepSeek-V4.1-Flash-1017` 返回 400「The supported API model names are deepseek-flash, deepseek-v4-pro」（request_id `43f6a4d0-…`），按用户「以接口实际支持为准」的口径改为 `deepseek-flash`，接口 `https://api.deepseek.com`。实测：`发明专利权的期限是几年` 3152.4 ms、`假冒专利要承担什么法律责任` 7008.7 ms（均 < 30 s）；两次 `citation_valid=true`、`invalid_citations=null`（无越界），引用均落在本次 top-5，`prompt_version=ask.system.v1`、`reason=null`，答案带条款依据。
-- 当前唯一未验证项：`V05-11`（mermaid 渲染）——本机无渲染环境，需 GitHub 页面确认。
+- **`V05-11` 未通过（2026-11-21 实测，三次尝试）**：用无头 Chrome 打开 `main`/`dev` 的 README 第 8 节，GitHub 均报 `Unable to render rich display`。① 原始版本报 `Lexical error on line 21`，指向 `R[/ask/<br/>v0.5]`——`/` 被当作平行四边形起点；② 把 `/search/`、`/eval/`、`/ask/` 改成带引号矩形后，报同一句通用错误；③ 再把标签全部去斜杠/星号（`search 接口`、`512 + 64`、`2704 x 512`）后仍失败。同一份源码用 `mermaid@10` 在本机 `parse` 得 `PARSE OK`，说明不是语法问题；**疑为渲染侧**（本机访问 `viewscreen.githubusercontent.com` 经代理，iframe 里只落到样式表、无 SVG）。该项保持「未通过」，等正常网络侧肉眼确认或改降级写法。
+- 待你定：若你那侧打开 `https://github.com/ty-user8/kui/blob/main/README.md#8-架构` 能正常出图，说明是环境差异，我把该项记「通过；本机代理侧不可见」；若你那侧也报错，我改成「ASCII 框图」并入 README，同时保留 mermaid 源码于代码块。
 - `12-release-checklist.md` 已补 v0.5 专项 12 项：V05-09（`/ask` 真实模型）、V05-11（mermaid 渲染）、V05-12（真实 runner）分别标「待补／未验证／待验证」。
 - 下一步：v0.5 收尾（G4 材料与 V05 逐条核对；`/ask` 接真 key 后补一次完整真跑）。

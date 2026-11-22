@@ -70,7 +70,7 @@
 | 项 | 内容 |
 | --- | --- |
 | 用途 | 回答「哪些是 2025 年之后的行政法规」「应急管理部有哪些文件」这类**枚举型**问题，不消耗检索 |
-| 入参 | `field`（枚举：`category`／`authority`／`publish_date`／`title`／`doc_id`）、`op`（枚举：`eq`／`in`／`between`／`contains`）、`value`（字符串或字符串数组；`between` 用两元素数组 `[from, to]`）、`limit`（1–50，默认 20） |
+| 入参 | `field`（枚举：`category`／`authority`／`publish_date`／`title`／`doc_id`）、`op`（枚举：`eq`／`in`／`between`／`contains`）、`value`（**统一为字符串数组**，1–10 项：`eq` 取 1 项、`in` 取多项、`between` 取 `[起始日, 结束日]`、`contains` 取 1 项）、`limit`（1–50，默认 20）。组合规则写进工具 description、由代码侧校验 |
 | 出参 | `documents[]`：`doc_id`、`title`、`category`、`authority`、`publish_date`、`effective_date`；`count`；`truncated`（是否因 limit 截断） |
 | 实现 | 读 `manifest.json`（或 `documents` 表）做**白名单字段**比较；字段与算子组合不在白名单内 → `TOOL_ARGS_INVALID`；不接受自由 SQL、不接受未列字段 |
 | 备注 | 这是唯一「不走向量」的工具，用于省一次检索；结果仍可交给 `get_anchor_text` 取正文 |
@@ -142,6 +142,7 @@
       }
     },
     "filter_metadata": {
+      "description": "按文档元数据筛选（不走检索）。field/op/value 组合规则：eq=单值精确匹配（value 长度 1）；in=集合匹配（value 可多个）；between 仅用于 publish_date，value 必须是 [起始日, 结束日] 两个 YYYY-MM-DD；contains 仅用于 title，value 长度 1 的子串匹配。组合规则由代码侧校验，违反时返回 TOOL_ARGS_INVALID。",
       "type": "object",
       "additionalProperties": false,
       "required": ["field", "op", "value"],
@@ -149,21 +150,13 @@
         "field": { "enum": ["category", "authority", "publish_date", "title", "doc_id"] },
         "op": { "enum": ["eq", "in", "between", "contains"] },
         "value": {
-          "oneOf": [
-            { "type": "string", "maxLength": 100 },
-            { "type": "array", "items": { "type": "string" }, "minItems": 1, "maxItems": 10 }
-          ]
+          "type": "array",
+          "items": { "type": "string", "maxLength": 100 },
+          "minItems": 1,
+          "maxItems": 10
         },
         "limit": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 }
-      },
-      "allOf": [
-        { "if": { "properties": { "op": { "const": "between" } } },
-          "then": { "properties": { "field": { "enum": ["publish_date"] }, "value": { "type": "array", "minItems": 2, "maxItems": 2 } } } },
-        { "if": { "properties": { "op": { "const": "in" } } },
-          "then": { "properties": { "value": { "type": "array", "minItems": 1 } } } },
-        { "if": { "properties": { "op": { "const": "contains" } } },
-          "then": { "properties": { "field": { "enum": ["title"] }, "value": { "type": "string" } } } }
-      ]
+      }
     },
     "get_anchor_text": {
       "type": "object",
@@ -179,7 +172,12 @@
 }
 ```
 
-> 说明：`get_anchor_text` 的「`doc_id` + `article_no` 二选一」在 JSON Schema 里用 `oneOf` 表达会被部分模型误读，故 v2 只暴露 `chunk_id`（检索结果里已带 `chunk_id`），`doc_id + article_no` 仅作内部函数入参，不进模型可见 schema。**D3 已定稿：不暴露**。
+> **通用规则（模型可见 schema 一律遵守）**：**不使用 `oneOf` / `anyOf` / `allOf` / `if-then` 等条件构造**——DeepSeek 的 strict function call 对这类构造支持有限，存在 400 拒绝或模型误读的风险（§5 早期草案里 `filter_metadata.value` 用过 `oneOf`、`op` 与 `field` 的组合用过 `allOf+if/then`，已按本规则改掉）。落地方式：
+>
+> 1. 模型可见 schema 只用 `type` / `enum` / `items` / `minItems` / `maxItems` / `minLength` / `maxLength` / `minimum` / `maximum` / `required` / `additionalProperties:false`；
+> 2. **字段间的组合约束写进工具 `description` 的自然语言**（如 `between` 只配 `publish_date` 且要两个日期），并在 `tools.py` 用 pydantic 校验器**代码侧兜底**；不合法结构的调用一律 `TOOL_ARGS_INVALID`，不回灌给模型重试；
+> 3. 同一规则适用于 `get_anchor_text` 的「`doc_id` + `article_no` 二选一」——故 v2 只暴露 `chunk_id`（检索结果里已带 `chunk_id`），`doc_id + article_no` 仅作内部函数入参，不进模型可见 schema（**D3 已定稿：不暴露**）；
+> 4. 单测里加一条结构性断言：递归扫描 `TOOL_SCHEMAS`，命中 `oneOf` / `anyOf` / `allOf` / `if` / `then` / `not` 任一键即失败——防止以后有人手滑加回来。
 
 ## 6. function call 编排（混合式，两轮封顶）
 
@@ -331,5 +329,19 @@ CREATE TABLE IF NOT EXISTS agent_turns (
 阶段推进顺序不变：**S1 → S5**，等用户下达 S1 指令后开工；S1 只做 `src/agent/schema.py` + `tools.py` + 工具层单测。
 
 ---
+
+## 14. 执行记录
+
+### S1（2026-11-22）
+
+| 项 | 结果 |
+| --- | --- |
+| 新增文件 | `src/agent/__init__.py`、`src/agent/schema.py`、`src/agent/tools.py`、`tests/test_agent_tools.py` |
+| schema 构造方式 | 手写（不用 `model_json_schema()`，以避开 pydantic 给 `Optional` 自动加的 `anyOf`）；结构断言递归扫描 `oneOf`/`anyOf`/`allOf`/`if`/`then`/`not`/`$ref`/`$defs` 命中即失败 |
+| 参数校验 | pydantic 模型 `extra="forbid"` + `filter_metadata` 的 `model_validator` 兜底组合规则；非法一律 `TOOL_ARGS_INVALID` |
+| 与 `/search` 一致性 | 单测断言「同一 query（含带 `filters` 的场景）下 `chunk_id` 序列、`score`、`flags` 与 `service.search` 全等」 |
+| 隔离 | 单测断言工具调用前后 `trace.jsonl` 大小与 `data/runs/` 目录列表不变（D1 的第四道证据） |
+| 单测 | S1 新增 32 例全绿；全量 156 例 OK（14.0 s） |
+| 未动 | `config.yaml`（`agent.*` 配额 S3 才接）、`src/api/**`、`src/eval/**`、`scripts/ci_check.py`、`eval.yml`、`app.py`、DB 迁移 |
 
 **交付状态**：本单为已确认的设计基线，2026-11-22 已入库留档（仅本文件，`dev` 分支）；未改任何现有代码、规格、配置与基线，未开始实现。

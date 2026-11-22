@@ -40,6 +40,7 @@
 - 基线 `r31a95a0e1de6`（`CHG-011`）；`deps_sha256 = 0d407a49…20ef0`（`CHG-010`）；`llm` 字面值已落 `config.yaml`（`CHG-012`），key 仍只读环境变量
 - 快照表随 `CHG-013` 再更新一行：`specs/01-requirements.md` 当前值 26400 / `d7bba05eba2a709b`（新增 §6-I，原 23319 为 v0.5 时点值）；`06-schemas/README.md`（7083 / `dae5b805ebc9e2ff`）与 `09-state.md`（10466 / `5be12436be48216a`）不在快照表内，只在本行留痕
 - v2 口径：配额 8 项在 `config.yaml` 的 `agent` 段（三项硬上限只可下调），`ui_port_agent: 8502`；会话两表不被 `/search`／`/eval`／CI 读取；`stateless_mode` 不进 `run_id`（D1）
+- v2 已交付（2026-11-22，`D-025`）：`main` 由 `de68f43` 快进到 **`0bb6521`**（推前 `is-ancestor` 退出码 0、`dev` 领先 8 个提交），`git ls-remote` 两分支同点；`dev`@`0bb6521` CI run `45003769470` 49 s 全绿（缓存全命中、回归判定 PASS、14 个业务步骤不变）
 
 ## 结论（核验方写）
 

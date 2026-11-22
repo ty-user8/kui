@@ -188,3 +188,19 @@
 - **口径**：「只推一次」约束的是**日常记录类提交不要为了同步而推 main**，不禁止**正式变更单落地并验证通过后的同步**。今后每个正式变更单验证通过 → 允许且应当做一次 `dev` → `main` 的 `--ff-only` 快进推送；日常流水、文档补记仍只留 dev。全程仍不 force、不 amend、不 rebase。
 - **本次执行**：`main` 由 `138d1d3` 快进到 `638456a`（推前 `git merge-base --is-ancestor main dev` 退出码 0，`dev` 领先 7 个提交），推后 `origin/dev` 与 `origin/main` 同点；同步内容含 `CHG-012` 的代码改动（`af72878`）与 V05-09 验证记录。
 - **版本**：v0.5 交付后维护期。
+
+## D-026 v2 问答 Agent 的五项决策（`CHG-013`）
+
+- **背景与依据**：v2 在既有检索服务上新增法律知识库问答 Agent，属架构与能力边界变更（技术方案 §7.3 约束 5），口径由 `CHG-013`（2026-11-22 确认，S1~S5 落地）承载。本条把该单 §13 的五项决策登记为可检索的决策索引，与变更单决策表逐条一致。
+- **D1 —— `stateless_mode` 不进 `run_id` 规范串（方案 A）**：
+  - 保留目的：技术方案 §7.3 约束 1 要求「评测路径恒为无状态、记忆模块强制关闭、且可被审计」，这一目的不变。
+  - 替换手段：用 agent 响应体字段 `stateless_mode: true`、`agent_sessions.stateless_mode` 列（会话写 `1`）与单测断言（规范串字段集合不含 `stateless`／`agent` 相关键；跑完问答后 `data/runs/` 无新目录、`runs`／`traces` 无新行）自证，替代「把开关写进哈希」。
+  - 不塞进哈希的理由：`run_id` 的定义是**配置指纹**，用来判断「这次结果能不能和上次比」。把「这轮有没有开记忆」混进同一哈希，会让两种完全不同的原因（换配置 / 加开关）呈现为同一个「id 变了」，丢掉可解释性；且改指纹须按 REQ-037 重测基线、换 `evals/baseline.json`、改 `PROGRESS` 快照表与检查单 C-06，并让 CI 红一次——为一条自证字段付这份代价不划算。v2 路径本就不产出 `metrics.json`、不参与回归，响应字段 + 表列已足够自证。
+- **D2 —— 会话过期读时判定**：按 `agent.session_ttl_hours`（默认 24 h）在每次读写会话时比对 `last_active_at`，过期即视为新会话并分配新 id，旧轮次不迁移；**不做后台清理任务**，不引入定时器或常驻线程。
+- **D3 —— `get_anchor_text` 只暴露 `chunk_id`**：模型可见入参为 `chunk_id`（+`max_chars`），不暴露 `doc_id + article_no` 组合入口；后者仅作内部函数入参，不进模型可见 schema（少一个被误用的口子，也避免条件 schema）。
+- **D4 —— 不新增 `POST /agent`**：问答只从 8502 页面进程内调用 `src.agent.orchestrator.run`，不扩 HTTP 接口面，守 REQ-056（无鉴权）与既有参数校验口径。
+- **D5 —— 多轮评测集不现在立项**：按技术方案 §7.3 约束 3 单独立项（样本要从「单条 query + gold 锚点」变为「对话串 + 每轮锚点」并按会话切分 holdout，工作量 ×3~5）；本版评测集与指标口径不变，`evals/cases.csv` 未动。
+- **技术方案差异（按 `D-024` 先例追溯）**：`specs/00-source/` 第 7.3 节「`run_id` 增加 `stateless_mode=true`」原文不改（只读归档、C-01 保护），归档副本字节与 SHA-256 不变；差异以本决策 + `CHG-013` §8.1／§13 追溯，落地位置见 `specs/09-state.md` §6 第 2 条。
+- **留痕口径**：本文件属 `标准开发流程SOP.md` 附录 C.1 表中「载体与过程留痕材料」（**否**，不受规则 #11 约束），版本、日期、依据与决策理由按追溯要求保留。
+- **影响**：`run_id` 仍为 `r31a95a0e1de6`，六项 0.5600／0.8600／0.9000／0.7045／0.7543／0.9000 不变；`config.yaml` 新增 `agent` 段 8 项（`max_turns`／`max_tool_calls_per_turn`／`max_context_turns` 只可下调）与 `server.ui_port_agent: 8502`；新增 `agent_sessions`／`agent_turns` 两表，不被 `/search`、`/eval`、`scripts/ci_check.py` 与 CI 读取。
+- **版本**：v2（2026-11-22，依据 `CHG-013` S1~S5）。

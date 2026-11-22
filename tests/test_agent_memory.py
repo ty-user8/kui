@@ -139,7 +139,9 @@ class TestSessionStore(TempDbCase):
     def test_ttl_expiry_creates_new_session(self):
         t0 = datetime(2026, 11, 22, 9, 0, 0)
         old = memory.open_session(self.conf, now=t0)["session_id"]
-        memory.record_turn(self.conf, old, turn_no=1, query_raw="旧会话", answer="a")
+        # 写入也用同一假时钟：record_turn 默认取真实时间，会把 last_active_at 顶到"现在"，
+        # 使下面的「t0 + 25h」在真实时钟落后 t0 不到 1 小时时不再过期（每天 17:00~18:00 必挂）。
+        memory.record_turn(self.conf, old, turn_no=1, query_raw="旧会话", answer="a", now=t0)
         # 24h TTL：25 小时后再来，应按新会话处理
         renewed = memory.open_session(self.conf, old, now=t0 + timedelta(hours=25))
         self.assertTrue(renewed["expired"])

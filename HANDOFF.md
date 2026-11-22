@@ -6,7 +6,7 @@
 
 - 改动：v2 收尾（`CHG-013` S5）——规格回填三处：`06-schemas/README.md` 加 `agent_sessions`／`agent_turns` 两表（存储清单、DDL 链到 `0004_agent.sql`、建表要点、对应表）；`09-state.md` §6 由「规划」转「已落地」并按 D1 改写「`stateless_mode` 不进 `run_id`」，新增 §7 会话生命周期与单轮两轮状态机；`01-requirements.md` 新增 §6-I「问答 Agent（v2）」REQ-059~REQ-068。三份均带版本／日期／依据（C.1 留痕，未按规则 #11 删元信息）。另加 1 条测试守 `/ask` 配额独立性。
 - 实测：全量 **205 例 OK**（无 env 189 例 OK、6 skip）；评测 `attempt-5` 的 `run_id=r31a95a0e1de6` 与六项 0.5600／0.8600／0.9000／0.7045／0.7543／0.9000 逐项不变，本地 `ci_check` 三项 PASS（`attempt-6`／`attempt-7` 逐字节一致 576 B）；真实 `deepseek-flash` 跑一问后 `data/runs` 15 目录、`trace.jsonl` 26695 B、`runs`／`traces` 行数全不变，只 agent 两表各 +1；依赖未动（lock 1379 B / `da26d417…`、73 行）。
-- 待确认：按 `D-025` 快进推 `main`（推前 `is-ancestor` 退出码 0、`--ff-only`，不 force／amend／rebase）。两件可选待你定：本地 `agent_*` 两表的 8 条会话／11 轮联调记录是否清空；`CHANGELOG-DECISIONS.md` 缺 v2 的 `D-026`（D1~D5 尚未成条，不在本批授权内）。
+- 待确认：按 `D-025` 快进推 `main`（推前 `is-ancestor` 退出码 0、`--ff-only`，不 force／amend／rebase）。两件可选待你定：本地 `agent_*` 两表的 8 条会话／11 轮联调记录是否清空；**`D-026` 已于 2026-11-22 补齐**（`CHANGELOG-DECISIONS.md` 第 192 行，D1~D5 逐条落点），v2 决策追溯闭环。
 
 ## 核验方写（每轮）
 

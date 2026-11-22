@@ -238,4 +238,4 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 - 下一步：v0.5 收尾（G4 材料与 V05 逐条核对；`/ask` 接真 key 后补一次完整真跑）。
 - **v2 S5 完成（2026-11-22，`CHG-013`）**：规格回填三处——`06-schemas/README.md` 两表说明与 DDL 链、`09-state.md` §6 转「已落地」并新增 §7 会话/单轮状态机、`01-requirements.md` 新增 §6-I（REQ-059~068），均带版本／日期／依据。验收：全量 **205 例 OK**（无 env 189 例 OK、6 skip）；`attempt-5` 的 `run_id=r31a95a0e1de6` 与六项逐项不变，本地 `ci_check` 三项 PASS；真实 `deepseek-flash` 跑一问（15964.0 ms、`citation_valid=true`、`flags=[]`）前后 `data/runs` 15 目录、`trace.jsonl` 26695 B、`runs` 12 行、`traces` 10 行全不变，只 `agent_sessions`／`agent_turns` 各 +1；`/ask` 配额独立性由新增用例守住；依赖未动。本批 diff 仅 3 份规格 + 1 个测试文件。
 - **待你定（可选）**：本地 `data/rag.db` 的 `agent_sessions`／`agent_turns` 现有联调留下的 8 条会话、11 轮（含 S5 实测 1 条），`data/` 不入库；演示前要不要清成空表，你一句话我执行——只 `DELETE` 这两张表的行，不动 `documents`／`chunks`／`runs`／`traces`。
-- **发现（未改，待你定）**：`CHG-013` §8.1 原写「决策条目随 S1 落地时一并补记」，但 `CHANGELOG-DECISIONS.md` 至今只到 `D-025`，v2 的 D1~D5 **尚未成条**。补 `D-026` 属纯留痕，不在本批「只补三处规格」的授权内，故未动。
+- **已闭环**：`CHG-013` §8.1 原写「决策条目随 S1 落地时一并补记」，此前只到 `D-025`；**`D-026` 已于 2026-11-22 补齐**（`CHANGELOG-DECISIONS.md` 第 192 行，D1~D5 逐条落点），v2 决策追溯闭环。

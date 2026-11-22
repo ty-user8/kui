@@ -68,6 +68,19 @@ server:
   api_host: 127.0.0.1
   api_port: 8000
   ui_port: 8501
+  # Agent 页面独立端口（CHG-013 §6；app.py／8501 不动）
+  ui_port_agent: 8502
+
+# Agent 配额与运行参数（CHG-013 §7）。三项上限只可下调：max_turns / max_tool_calls_per_turn / max_context_turns
+agent:
+  max_turns: 2
+  timeout_seconds: 30
+  max_calls_per_question: 2
+  max_calls_per_session: 20
+  max_tool_calls_per_turn: 3
+  max_context_turns: 3
+  max_tool_chars: 2000
+  session_ttl_hours: 24
 
 llm:
   # 以下三个 *_env 是覆盖入口（向后兼容）：环境变量有值就用环境变量的值。

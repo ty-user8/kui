@@ -94,6 +94,40 @@ class ServerConfig:
     api_host: str
     api_port: int
     ui_port: int
+    ui_port_agent: int = 8502
+
+
+# Agent 的 8 项默认值（`CHG-013` §7）。与 `src.agent.quota.AgentSettings` 的字段默认值逐项一致，
+# 两边由 tests/test_agent_memory.py 的断言绑定：改一边漏一边会直接红。
+AGENT_DEFAULTS = {
+    "max_turns": 2,
+    "timeout_seconds": 30.0,
+    "max_calls_per_question": 2,
+    "max_calls_per_session": 20,
+    "max_tool_calls_per_turn": 3,
+    "max_context_turns": 3,
+    "max_tool_chars": 2000,
+    "session_ttl_hours": 24.0,
+}
+
+# 这三项直接决定一轮问答最多烧多少调用/上下文，配置只能下调
+AGENT_HARD_CAPS = {"max_turns": 2, "max_tool_calls_per_turn": 3, "max_context_turns": 3}
+
+_AGENT_FLOAT_KEYS = ("timeout_seconds", "session_ttl_hours")
+
+
+@dataclass(frozen=True)
+class AgentConfig:
+    """`config.yaml` 的 `agent` 段；默认值即 §7 口径，硬上限在 `_parse_agent` 里拦。"""
+
+    max_turns: int
+    timeout_seconds: float
+    max_calls_per_question: int
+    max_calls_per_session: int
+    max_tool_calls_per_turn: int
+    max_context_turns: int
+    max_tool_chars: int
+    session_ttl_hours: float
 
 
 @dataclass(frozen=True)
@@ -122,6 +156,7 @@ class Config:
     eval: EvalConfig
     run: RunConfig
     server: ServerConfig
+    agent: AgentConfig
     llm: LlmConfig
     paths: Paths
     db_path_env: str
@@ -158,6 +193,39 @@ def _as_dir(cfg: Mapping[str, Any], dotted: str) -> pathlib.Path:
     for part in dotted.split("."):
         node = _need(node, part, dotted)
     return (PROJECT_ROOT / str(node)).resolve()
+
+
+def _parse_agent(raw: Mapping[str, Any] | None) -> AgentConfig:
+    """读 `agent` 段：缺键取默认值；三项硬上限与正数校验在这里拦（与 `AgentSettings` 同一条口径）。"""
+    section = raw or {}
+    if not isinstance(section, Mapping):
+        raise ConfigError("agent 段必须是映射")
+
+    values: dict[str, Any] = {}
+    for name, default in AGENT_DEFAULTS.items():
+        raw_value = section.get(name, default)
+        try:
+            values[name] = float(raw_value) if name in _AGENT_FLOAT_KEYS else int(raw_value)
+        except (TypeError, ValueError) as exc:
+            raise ConfigError("agent.%s 取值非法：%r" % (name, raw_value)) from exc
+
+    for name, cap in AGENT_HARD_CAPS.items():
+        if values[name] < 1:
+            raise ConfigError("agent.%s 必须为正整数（当前 %r）" % (name, values[name]))
+        if values[name] > cap:
+            raise ConfigError(
+                "agent.%s 只能下调，不得大于默认上限 %d（当前 %d）：见 CHG-013 §7" % (name, cap, values[name])
+            )
+    if values["timeout_seconds"] <= 0:
+        raise ConfigError("agent.timeout_seconds 必须为正数")
+    if values["session_ttl_hours"] <= 0:
+        raise ConfigError("agent.session_ttl_hours 必须为正数")
+    for name in ("max_calls_per_question", "max_calls_per_session", "max_tool_chars"):
+        if values[name] < 1:
+            raise ConfigError("agent.%s 必须为正整数" % name)
+    if values["max_calls_per_question"] > values["max_calls_per_session"]:
+        raise ConfigError("agent.max_calls_per_question 不得大于 max_calls_per_session")
+    return AgentConfig(**values)
 
 
 def load(path: str | pathlib.Path | None = None, require_db: bool = False) -> Config:
@@ -229,7 +297,12 @@ def load(path: str | pathlib.Path | None = None, require_db: bool = False) -> Co
     server = _need(raw, "server", "root")
     api_port = int(_need(server, "api_port", "server"))
     ui_port = int(_need(server, "ui_port", "server"))
-    for name, port in (("server.api_port", api_port), ("server.ui_port", ui_port)):
+    ui_port_agent = int(server.get("ui_port_agent", 8502))
+    for name, port in (
+        ("server.api_port", api_port),
+        ("server.ui_port", ui_port),
+        ("server.ui_port_agent", ui_port_agent),
+    ):
         if not 1 <= port <= 65535:
             raise ConfigError("%s 应在 [1, 65535] 内" % name)
 
@@ -287,7 +360,9 @@ def load(path: str | pathlib.Path | None = None, require_db: bool = False) -> Co
             api_host=str(server.get("api_host", "127.0.0.1")),
             api_port=api_port,
             ui_port=ui_port,
+            ui_port_agent=ui_port_agent,
         ),
+        agent=_parse_agent(raw.get("agent")),
         llm=LlmConfig(
             api_key_env=str(_need(llm, "api_key_env", "llm")),
             base_url_env=str(_need(llm, "base_url_env", "llm")),

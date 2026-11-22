@@ -21,6 +21,7 @@ DEFAULTS = {
     "max_tool_calls_per_turn": 3,
     "max_context_turns": 3,
     "max_tool_chars": 2000,
+    "session_ttl_hours": 24.0,
 }
 
 # 这三项只允许下调：它们直接决定一轮问答最多烧多少次调用/多少上下文
@@ -53,6 +54,7 @@ class AgentSettings:
     max_tool_calls_per_turn: int = DEFAULTS["max_tool_calls_per_turn"]
     max_context_turns: int = DEFAULTS["max_context_turns"]
     max_tool_chars: int = DEFAULTS["max_tool_chars"]
+    session_ttl_hours: float = DEFAULTS["session_ttl_hours"]
 
     def __post_init__(self) -> None:
         for name, cap in HARD_CAPS.items():
@@ -66,10 +68,15 @@ class AgentSettings:
         for name in ("max_calls_per_question", "max_calls_per_session", "max_tool_chars"):
             if getattr(self, name) < 1:
                 raise ValueError("%s 必须为正整数" % name)
+        if self.session_ttl_hours <= 0:
+            raise ValueError("session_ttl_hours 必须为正数")
 
     @classmethod
     def from_conf(cls, conf) -> "AgentSettings":
-        """优先读 `config.agent`（S3 加）；没有就退回默认值，保证 S2 不依赖配置改动。"""
+        """读 `config.agent`（S3 起）；缺段时退回默认值，保证单独用工具/编排的测试不依赖配置。
+
+        三项硬上限仍走 `__post_init__` 的同一条校验：配置把 `max_turns` 写到 3 会在构造时抛错。
+        """
         section = getattr(conf, "agent", None)
         if section is None:
             return cls()

@@ -360,4 +360,21 @@ CREATE TABLE IF NOT EXISTS agent_turns (
 | 顺手修 | `tests/test_agent_tools.py` 的 `load_conf_or_skip` 原先在 `setUpClass` 里调 `tc.skipTest()`（实例方法），实际抛 `TypeError` 表现为 5 个 ERROR；改为 `raise unittest.SkipTest(...)`，现在缺 `RAG_DB_PATH` 时结构断言照跑、其余 5 类 skip |
 | 未动 | `config.yaml`（`agent.*` 接线 S3）、DB 迁移（S3）、8502 页面（S4）、`src/api/**`、`src/eval/**`、`ci_check.py`、`eval.yml` |
 
+### S3（2026-11-22）
+
+| 项 | 结果 |
+| --- | --- |
+| 新增文件 | `src/agent/memory.py`（会话/轮次 + 规则式改写）、`specs/06-schemas/migrations/0004_agent.sql`、`tests/test_agent_memory.py`（21 例） |
+| 迁移 | 只 `CREATE TABLE IF NOT EXISTS agent_sessions / agent_turns` + 一个索引 + `INSERT OR IGNORE INTO schema_migrations (4,'agent')`；单测断言 0004 内无 `ALTER TABLE`／`DROP TABLE`／`UPDATE documents`／`DELETE FROM`，且 0001~0003 文本里不含 `agent_`；应用后 4 个版本齐全、既有 6 张表仍在 |
+| 改写规则（0 次 API） | `pronoun_carryover`（含 它/该法/上述 等 → 前置上一轮问句）、`ellipsis_append`（≤8 字且带 呢/吗/还有 等语气 → 同上）、`date_inherit`（今年/去年/前年 → 具体年份，已带 4 位年份则不替换）；三条各有用例，另有「无历史不改写」「上一轮已改写句不重复叠加」两条 |
+| 会话存取 | `open_session` / `next_turn_no` / `record_turn`（同 `(session, turn_no)` 覆盖写）/ `load_turns` / `history_for_prompt`；单测覆盖建会话、续会话、轮次正序、幂等覆盖、历史拼装 |
+| 会话隔离 | 两个 session 各写一轮，互相 `load_turns` 只见自己的；不存在的会话返回空列表（新会话 id 不复用传入值） |
+| TTL（D2） | 25 h 后再用旧 id → `expired=True` 且换新 id，旧轮次不挂到新会话；无后台清理任务 |
+| 配置接线 | `config.yaml` 只增 `server.ui_port_agent: 8502` 与 `agent:` 8 项；`src/config.py` 新增 `AgentConfig`、`AGENT_DEFAULTS`、`AGENT_HARD_CAPS` 与 `_parse_agent`；既有 `api_port`/`ui_port` 等键未动 |
+| 默认值一致性 | 三条断言绑定：`config.AGENT_DEFAULTS == quota.DEFAULTS`、`AgentSettings` 字段默认值 == `DEFAULTS`、`config.yaml` 实际加载值 == `DEFAULTS` |
+| 硬上限单一入口 | 配置侧 `_parse_agent` 拒绝上调（`ConfigError`），代码侧 `AgentSettings.__post_init__` 仍拒绝（`ValueError`）；`from_conf` 走同一构造，不绕校验 |
+| 单测 | S3 新增 21 例全绿；全量 194 例 OK（14.9 s）；无环境变量 178 例 OK（6 skip，0 error） |
+| 未动 | 8502 页面（S4）、`src/api/**`、`src/eval/**`、`ci_check.py`、`eval.yml`、`evals/**`、锁文件、基线 |
+| 遗留（S5 一并做） | `06-schemas/README.md` 的两表说明、`09-state.md` 的会话状态机、`01-requirements.md` 的 EARS 条款尚未回填；`quota` 硬上限文案与配置端口文档待 S5 统一 |
+
 **交付状态**：本单为已确认的设计基线，2026-11-22 已入库留档（仅本文件，`dev` 分支）；未改任何现有代码、规格、配置与基线，未开始实现。

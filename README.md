@@ -65,8 +65,15 @@ $env:HF_HOME = ".cache/models"
 | 回归判定（等同 CI） | `.venv\Scripts\python.exe scripts\ci_check.py` |
 | 起接口 | `.venv\Scripts\python.exe -m src.api.main`（默认 `127.0.0.1:8000`） |
 | 起页面 | `.venv\Scripts\python.exe -m streamlit run app.py`（默认 `8501`） |
+| 起问答页面 | `.venv\Scripts\python.exe -m streamlit run app_agent.py --server.port 8502` |
 | trace 入库表 | `.venv\Scripts\python.exe -m src.cli.import_traces` |
 | 单元测试 | `.venv\Scripts\python.exe -m unittest discover -s tests -t .` |
+
+问答页面（8502，与 8501 各自独立进程）：
+
+- 端口取 `config.yaml` 的 `server.ui_port_agent`（默认 `8502`）；`--server.port` 显式给同一值即可。
+- 环境变量：`RAG_DB_PATH`、`HF_HOME`、`RAG_LLM_API_KEY`；模型名与接口地址取 `config.yaml` 的 `llm.model_name`／`llm.base_url`。
+- 会话数据存 SQLite 的 `agent_sessions`（会话）与 `agent_turns`（轮次）两张表；首次连库自动应用迁移 `0004_agent.sql`。这两张表不被 `/search`、`/eval` 与 CI 读取。
 
 ## 5. 接口
 

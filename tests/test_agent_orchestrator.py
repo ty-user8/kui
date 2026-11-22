@@ -127,12 +127,24 @@ class TestTwoRoundFlow(unittest.TestCase):
         self.assertEqual(result["flags"], [])
         self.assertEqual(len(client.calls), 2)
         self.assertEqual(client.calls[0]["tool_choice"], "auto")
-        self.assertEqual(client.calls[1]["tool_choice"], "none")
+        self.assertNotIn("tool_choice", client.calls[1])  # 末轮摘掉工具，只给 messages
+        self.assertNotIn("tools", client.calls[1])
         self.assertEqual(len(result["tool_trace"]), 1)
         self.assertTrue(result["tool_trace"][0]["ok"])
         self.assertEqual(result["tool_trace"][0]["digest"]["count"], 1)
         self.assertTrue(result["stateless_mode"])
         self.assertEqual(self.seen[0][0], "search_laws")
+
+    def test_tools_payload_matches_chat_api(self):
+        """真实调用要求 `{"type":"function","function":{...}}`，扁平结构会被 422 拒。"""
+        _, client = self.run_agent([message("好。")])
+        tools = client.calls[0]["tools"]
+        self.assertEqual(len(tools), 4)
+        for item in tools:
+            self.assertEqual(item["type"], "function")
+            self.assertIn("name", item["function"])
+            self.assertIn("parameters", item["function"])
+            self.assertNotIn("name", item)  # 扁平字段不能留在外层
 
     def test_no_tool_call_answers_directly(self):
         result, client = self.run_agent([message("现有条文不足以回答。")])
@@ -285,7 +297,9 @@ class TestIntegrationIsolation(unittest.TestCase):
         runs_before = sorted(p.name for p in runs_dir.iterdir()) if runs_dir.is_dir() else []
 
         def answer_with_real_chunk(kwargs):
-            tool_payload = json.loads(kwargs["messages"][-1]["content"])
+            # 末轮会追加一条 system 提醒，工具结果不是最后一条 → 倒着找 role=tool
+            tool_message = next(msg for msg in reversed(kwargs["messages"]) if msg.get("role") == "tool")
+            tool_payload = json.loads(tool_message["content"])
             chunk_id = tool_payload["hits"][0]["chunk_id"]
             return message("依据条文，期限为二十年。[%s]" % chunk_id)
 

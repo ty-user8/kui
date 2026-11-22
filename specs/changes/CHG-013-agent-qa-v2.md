@@ -377,4 +377,27 @@ CREATE TABLE IF NOT EXISTS agent_turns (
 | 未动 | 8502 页面（S4）、`src/api/**`、`src/eval/**`、`ci_check.py`、`eval.yml`、`evals/**`、锁文件、基线 |
 | 遗留（S5 一并做） | `06-schemas/README.md` 的两表说明、`09-state.md` 的会话状态机、`01-requirements.md` 的 EARS 条款尚未回填；`quota` 硬上限文案与配置端口文档待 S5 统一 |
 
+### S4（2026-11-22）
+
+| 项 | 结果 |
+| --- | --- |
+| 新增文件 | `app_agent.py`（8502 入口，仅 set_page_config + 调 ui.render）、`src/agent/ui.py`（页面主体）、`tests/test_agent_ui.py`（9 例，含 AppTest 冒烟） |
+| 页面可起 | 8502 起服务后浏览器实测：标题「法规问答 Agent」、副标题「会话 … · 已用 0/20 次调用 · 单次超时 30 s · 最多 2 轮」、底部输入框正常；8501 同时在线未受影响 |
+| 首连库迁移 | 页面真实会话执行脚本后，本地 `data/rag.db` 从 `[1,2,3]` 变为 **`[1,2,3,4]`**，`agent_sessions`／`agent_turns` 两表出现且写入 1 条会话；未手写建表，全由 `memory._connect` 应用 0004 |
+| 多轮可用 | 真实模型两轮实测：第 1 轮 `search_laws` 取证 + 出答案，第 2 轮「那实用新型呢」被规则改写为「…；那实用新型呢」并带上轮历史，两轮均 `citation_valid=true`、无 flags、每问 2 次调用（配额内）；会话表存 2 行 |
+| 隔离 | `app.py`／8501 零改动；未新增 `POST /agent`（D4），问答只在页面进程内调 `orchestrator.run` |
+
+**真实调用暴露并修掉的三处接线缺陷**（本地假客户端测不出，均已在 S4 修复并有断言）：
+
+1. **tools 报文格式**：`TOOL_SCHEMAS` 是扁平 `{name, description, parameters}`，直接传会被接口拒——`422 ... tools[0]: missing field type`。改为 `{"type":"function","function":{...}}`（`orchestrator.tool_payload()`），并加单测断言外层有 `type`、内层有 `name`/`parameters`。
+2. **末轮仍吐工具调用**：只把 `tool_choice` 设成 `none`、工具清单还在时，模型会把调用写进正文（DeepSeek 的 `<｜｜DSML｜｜>` 形态）。改为**末轮不挂 `tools`**；单测断言第 2 次调用既无 `tools` 也无 `tool_choice`。
+3. **末轮正文仍可能是工具标记**：历史里已有 tool_calls 时模型仍会模仿输出标记。追加末轮 system 提醒，并加正文标记防御——命中即标 `TOOL_CALL_IN_CONTENT`、答案置空，不把标记当答案入库。
+
+**质量观察（非 S4 缺陷，如实记录）**：「发明专利权的期限是几年」的 top-5 命中里没有含「二十年」的第四十二条片段（`service.search` 与工具返回逐条一致：00012 是第三十八～四十条），模型因此如实答「现有条文不足以回答」。这属既有固定窗口切分的检索局限（`evals/badcases-v0.5.md`），演示时选命中更好的问题更合适。
+
+| 验证 | 结果 |
+| --- | --- |
+| 单测 | S4 新增 9 例 + 编排修缺陷加 1 例；全量 **204 例 OK**（18.9 s）；无环境变量 188 例 OK（6 skip，0 error） |
+| 未动 | `app.py`、`src/api/**`、`src/eval/**`、`ci_check.py`、`eval.yml`、`evals/**`、锁文件、基线 |
+
 **交付状态**：本单为已确认的设计基线，2026-11-22 已入库留档（仅本文件，`dev` 分支）；未改任何现有代码、规格、配置与基线，未开始实现。

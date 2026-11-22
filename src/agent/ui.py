@@ -169,7 +169,12 @@ def render() -> None:
             st.caption(
                 "工具："
                 + " · ".join(
-                    "%s%s" % (item["name"], "" if item.get("ok") else " ✗ %s" % item.get("code", ""))
+                    "%s%s%s"
+                    % (
+                        item["name"],
+                        "（自动）" if item.get("auto") else "",
+                        "" if item.get("ok") else " ✗ %s" % item.get("code", ""),
+                    )
                     for item in result["tool_trace"]
                 )
             )

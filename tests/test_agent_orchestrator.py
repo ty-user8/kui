@@ -112,9 +112,11 @@ class TestTwoRoundFlow(unittest.TestCase):
         self.seen: list = []
         self.dispatch = memory_dispatch(self.seen)
 
-    def run_agent(self, script, **kwargs):
+    def run_agent(self, script, dispatch=None, **kwargs):
         client = FakeClient(script)
-        result = orchestrator.run(self.conf, QUERY, client=client, dispatch_fn=self.dispatch, **kwargs)
+        result = orchestrator.run(
+            self.conf, QUERY, client=client, dispatch_fn=dispatch or self.dispatch, **kwargs
+        )
         return result, client
 
     def test_happy_path_two_rounds(self):
@@ -129,9 +131,12 @@ class TestTwoRoundFlow(unittest.TestCase):
         self.assertEqual(client.calls[0]["tool_choice"], "auto")
         self.assertNotIn("tool_choice", client.calls[1])  # 末轮摘掉工具，只给 messages
         self.assertNotIn("tools", client.calls[1])
-        self.assertEqual(len(result["tool_trace"]), 1)
+        self.assertEqual(len(result["tool_trace"]), 2)  # search + 自动取证
+        self.assertEqual(result["tool_trace"][0]["name"], "search_laws")
         self.assertTrue(result["tool_trace"][0]["ok"])
         self.assertEqual(result["tool_trace"][0]["digest"]["count"], 1)
+        self.assertEqual(result["tool_trace"][1]["name"], "get_anchor_text")
+        self.assertTrue(result["tool_trace"][1]["auto"])
         self.assertTrue(result["stateless_mode"])
         self.assertEqual(self.seen[0][0], "search_laws")
 
@@ -172,12 +177,15 @@ class TestTwoRoundFlow(unittest.TestCase):
         self.assertEqual(len(client.calls), 2)
         self.assertIn(orchestrator.FLAG_TURN_LIMIT_HIT, result["flags"])
         self.assertEqual(result["answer"], "")
-        self.assertEqual(len(result["tool_trace"]), 1)
+        self.assertEqual(len(result["tool_trace"]), 2)  # search + 自动取证（模型那次调用未执行）
 
     def test_tool_calls_truncated_to_limit(self):
         calls = [FakeToolCall("search_laws", {"query": QUERY}, call_id="call_%d" % i) for i in range(4)]
         result, _ = self.run_agent([tool_call_response(*calls), message("好。[c1]")])
-        self.assertEqual(len(result["tool_trace"]), 3)
+        executed = [e for e in result["tool_trace"] if not e.get("auto")]
+        auto = [e for e in result["tool_trace"] if e.get("auto")]
+        self.assertEqual(len(executed), 3)
+        self.assertEqual(len(auto), 1)  # 三次都命中 c1，按 chunk_id 去重
         self.assertIn(orchestrator.FLAG_TOOL_CALLS_TRUNCATED, result["flags"])
 
     def test_invalid_arguments_flagged_and_skipped(self):
@@ -215,6 +223,97 @@ class TestTwoRoundFlow(unittest.TestCase):
         self.assertEqual(result["answer"], "")
         self.assertEqual(result["citations"], [])
         self.assertEqual(len(client.calls), 1)
+
+    def test_second_round_gets_anchor_text(self):
+        """第 1 轮只回元数据，正文由编排层自动取证后并入第 2 轮上下文，不增加模型调用。"""
+        result, client = self.run_agent(
+            [
+                tool_call_response(FakeToolCall("search_laws", {"query": QUERY, "top_k": 5})),
+                message("第四十二条规定期限为二十年。[c1]"),
+            ]
+        )
+        self.assertEqual(len(client.calls), 2)
+        body = "\n".join(m.get("content") or "" for m in client.calls[1]["messages"] if m.get("role") == "system")
+        self.assertIn("发明专利权的期限为二十年。", body)  # 正文进了第 2 轮
+        self.assertIn("[c1]", body)  # 定位信息带 chunk_id
+        self.assertIn("第四十二条", body)
+        auto = [e for e in result["tool_trace"] if e.get("auto")]
+        self.assertEqual(len(auto), 1)
+        self.assertEqual(auto[0]["name"], "get_anchor_text")
+        self.assertTrue(auto[0]["ok"])
+        self.assertTrue(result["citation_valid"])
+
+    def test_anchor_text_truncated_to_max_tool_chars(self):
+        def dispatch(conf, name, payload):
+            if name == "search_laws":
+                return {
+                    "hits": [{"chunk_id": "c1", "doc_id": "d1", "title": "专利法", "article_no": "第四十二条",
+                              "heading_path": "第六章", "score": 0.9, "path": "fused"}],
+                    "flags": [],
+                    "count": 1,
+                }
+            if name == "get_anchor_text":
+                text = "发明专利权的期限为二十年。"
+                return {"chunk_id": "c1", "text": text[: payload["max_chars"]], "truncated": True,
+                        "doc_id": "d1", "title": "专利法", "article_no": "第四十二条", "heading_path": "第六章",
+                        "char_start": 0, "char_end": 13, "max_chars": payload["max_chars"]}
+            raise tools.ToolError("TOOL_NOT_FOUND", name)
+
+        result, client = self.run_agent(
+            [tool_call_response(FakeToolCall("search_laws", {"query": QUERY})), message("好。")],
+            dispatch=dispatch,
+            settings=quota.AgentSettings(max_tool_chars=5),
+        )
+        body = "\n".join(m.get("content") or "" for m in client.calls[1]["messages"] if m.get("role") == "system")
+        self.assertIn("发明专利权\n", body)  # 只带前 5 字（发/明/专/利/权）
+        self.assertNotIn("二十年", body)
+        auto = [e for e in result["tool_trace"] if e.get("auto")][0]
+        self.assertIn('"max_chars": 5', auto["args"])
+        self.assertEqual(auto["digest"]["chars"], 5)
+
+    def test_anchor_text_failure_keeps_answer(self):
+        def dispatch(conf, name, payload):
+            if name == "search_laws":
+                return {
+                    "hits": [{"chunk_id": "c1", "doc_id": "d1", "title": "专利法", "article_no": "第四十二条",
+                              "heading_path": "第六章", "score": 0.9, "path": "fused"}],
+                    "flags": [],
+                    "count": 1,
+                }
+            raise tools.ToolError("TOOL_RESULT_EMPTY", "chunk 不存在", {"chunk_id": payload.get("chunk_id")})
+
+        result, client = self.run_agent(
+            [tool_call_response(FakeToolCall("search_laws", {"query": QUERY})), message("现有条文不足以回答。[c1]")],
+            dispatch=dispatch,
+        )
+        self.assertEqual(len(client.calls), 2)  # 取证失败不额外调用模型
+        self.assertEqual(result["answer"], "现有条文不足以回答。[c1]")
+        auto = [e for e in result["tool_trace"] if e.get("auto")]
+        self.assertEqual(len(auto), 1)
+        self.assertFalse(auto[0]["ok"])
+        self.assertEqual(auto[0]["code"], "TOOL_RESULT_EMPTY")
+
+    def test_auto_anchor_only_for_search_results(self):
+        result, client = self.run_agent([tool_call_response(FakeToolCall("get_stats", {})), message("150 篇。")])
+        self.assertEqual(len(client.calls), 2)
+        self.assertEqual([e for e in result["tool_trace"] if e.get("auto")], [])
+
+    def test_auto_anchor_capped_at_limit(self):
+        def dispatch(conf, name, payload):
+            if name == "search_laws":
+                hits = [{"chunk_id": "c%d" % i, "doc_id": "d1", "title": "专利法", "article_no": "第%d条" % i,
+                         "heading_path": "第六章", "score": 0.9, "path": "fused"} for i in range(8)]
+                return {"hits": hits, "flags": [], "count": len(hits)}
+            return {"chunk_id": payload["chunk_id"], "text": "条文正文", "truncated": False,
+                    "doc_id": "d1", "title": "专利法", "article_no": "第1条", "heading_path": "第六章",
+                    "char_start": 0, "char_end": 4, "max_chars": 2000}
+
+        result, _ = self.run_agent(
+            [tool_call_response(FakeToolCall("search_laws", {"query": QUERY, "top_k": 8})), message("好。")],
+            dispatch=dispatch,
+        )
+        auto = [e for e in result["tool_trace"] if e.get("auto")]
+        self.assertEqual(len(auto), orchestrator.AUTO_ANCHOR_LIMIT)
 
     def test_quota_per_question_rejects_second_call(self):
         with self.assertRaises(orchestrator.AgentError) as ctx:

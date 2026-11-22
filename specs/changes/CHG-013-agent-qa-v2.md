@@ -414,4 +414,18 @@ CREATE TABLE IF NOT EXISTS agent_turns (
 | 边界 | 未动 `evals/baseline.json`、锁文件、`src/api/**`、`src/eval/**`、`scripts/ci_check.py`、`.github/workflows/eval.yml`、`app.py`／8501 |
 | 交付 | 按 `D-025` 快进推 `main`（`merge-base --is-ancestor main dev` 退出码 0 → `--ff-only` → `push origin main`），不 force／不 amend／不 rebase |
 
+### 缺陷修复：第 2 轮取不到正文（2026-11-22，S5 后）
+
+| 项 | 结果 |
+| --- | --- |
+| 现象 | 两轮封顶 + 末轮摘 `tools`，使 `get_anchor_text` 没有执行窗口：第 1 轮 `search_laws` 只回元数据（chunk_id / 条号 / 分数，无正文），拿到 chunk_id 时已是第 2 轮，而第 2 轮不允许再调工具。结果是模型只能看到条号，答「现有条文不足以回答」 |
+| 修法 | 把 `get_anchor_text` 从「模型显式调用的工具」改为**编排层确定性取证**：第 1 轮工具回填后、第 2 轮生成前，由 `_collect_anchor_texts` 对本次 `search_laws` 的命中自动取正文（按 chunk_id 去重、封顶 `AUTO_ANCHOR_LIMIT=5`、单个正文受 `max_tool_chars` 截断），以 system 消息并入第 2 轮上下文；命中为空或取值失败时不阻断，只在 `tool_trace` 记 `ok=false` 与错误码 |
+| 工具轨迹 | 自动取的每条都进 `tool_trace`，带 `auto=true`、`name=get_anchor_text`、参数、耗时与摘要，和模型发起的调用可区分可审计 |
+| 系统提示 | 删掉「用 `get_anchor_text` 取命中 chunk 的原文」这条模型做不到的指令，改为「正文由系统自动附在下一轮上下文里」，并要求引用只能来自工具结果或附带正文 |
+| 铁律未动 | `max_turns=2` 不变；第 2 轮仍不挂 `tools`（`tool_choice=None`）；评测回路仍 0 次 LLM 调用；自动取证只调本地 SQLite，不产生模型调用 |
+| 单测 | 新增 5 例：第 2 轮上下文含正文与定位信息、正文按 `max_tool_chars` 截断、取证失败仍出答案、非 `search_laws` 不触发取证、命中数封顶 5；既有 3 处计数断言随轨迹变化同步（`tool_trace` 由 1 变 2、去重后为 4）。`TestTwoRoundFlow` 19 例 OK |
+| 真数据抽验 | 用真实库 `...:00012` 跑 `tools.dispatch` + `_format_anchor_block`：块内含 `[chunk_id] 中华人民共和国专利法 第三十八条 第四章… 字符 5376-5888` 与真实条文正文，200 字截断标记 `truncated=true` |
+| 本地未跑通 | 完整套件（含真 dispatch 的集成用例）在本机因 `OSError: 页面文件太小 (1455)` 中断——开发机此时同时跑着 8000／8501／8502 三个服务，torch 加载权重的提交内存不足；同一用例在 CI 的干净 runner 上执行 |
+| 边界 | 未动 `src/api/**`、`src/eval/**`、`scripts/ci_check.py`、`.github/workflows/eval.yml`、`evals/**`、锁文件与基线 |
+
 **交付状态**：本单为已确认的设计基线，2026-11-22 已入库留档（仅本文件，`dev` 分支）；未改任何现有代码、规格、配置与基线，未开始实现。

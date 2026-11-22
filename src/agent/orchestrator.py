@@ -5,7 +5,8 @@
 ```
 query → [规则式改写，S3] → 第 1 轮 LLM(tools, tool_choice=auto)
       → 有 tool_calls：代码执行（白名单 + pydantic 校验 + 上限截断）→ 回填
-      → 第 2 轮 LLM(tool_choice=none) → 最终答案 → 引用校验
+      → [自动取证] 对本次 search_laws 的命中取正文，并入第 2 轮上下文
+      → 第 2 轮 LLM(不挂 tools) → 最终答案 → 引用校验
 ```
 
 硬约束：
@@ -14,6 +15,8 @@ query → [规则式改写，S3] → 第 1 轮 LLM(tools, tool_choice=auto)
   不做第三轮、也不解析其 content 里的"工具名"。
 - **工具数封顶**：每轮最多 `max_tool_calls_per_turn` 个，多出的丢弃并标 `TOOL_CALLS_TRUNCATED`。
 - **参数非法不回灌重试**：pydantic 校验失败直接把结构化错误当成工具结果回填，标 `TOOL_ARGS_INVALID`。
+- **取证由代码完成**：`search_laws` 只回元数据，正文由本模块在第 1 轮工具回填后自动调用
+  `get_anchor_text` 取回（每轮封顶 5 个片段，受 `max_tool_chars` 截断），不额外增加模型调用。
 - **不产出评测/追踪产物**：所有检索经 `tools.search_laws`（内部 `write_trace=False`），
   本模块不写 `traces`／`runs`／`metrics.json`（`CHG-013` §8.1 D1）。
 
@@ -33,17 +36,17 @@ from src.generate.ask import resolve_model
 
 PROMPT_VERSION = "ask.agent.v1"
 
-AGENT_SYSTEM_PROMPT = """你是法律法规检索助手。只能依据工具返回的条文作答，禁止凭记忆补条款。
+AGENT_SYSTEM_PROMPT = """你是法律法规检索助手。只能依据工具结果与系统附带的正文作答，禁止凭记忆补条款。
 
 工具使用规则：
-1. 需要条文时调用 search_laws，**同一 query 只查一次**；若命中片段只是章标题或不含答案，
-   用 get_anchor_text 取命中 chunk 的原文再判断，不要重复检索同一 query。
+1. 需要条文时调用 search_laws，**同一 query 只查一次**；命中片段的正文由系统自动附在下一轮上下文里，
+   不要再尝试二次取证，也不要重复检索同一 query。
    问"哪些法规/某机关/某时间段"这类枚举用 filter_metadata；问规模用 get_stats。
 2. **必须通过接口提供的 function calling 发起调用**（即返回 tool_calls）；严禁把工具调用写成正文，
    正文里出现 <｜｜DSML｜｜>、<invoke>、<parameter> 之类标记一律视为错误。
-3. 最多两轮：第一轮取证，第二轮给结论；第二轮不要再请求工具。
-4. 答案用中文，结论在前；每个事实后面用 [chunk_id] 标注依据，chunk_id 必须来自工具结果。
-5. 工具没给到依据时，直接说"现有条文不足以回答"，不要编造。"""
+3. 最多两轮：第一轮取证，第二轮只出答案，不要再请求工具。
+4. 答案用中文，结论在前；每个事实后面用 [chunk_id] 标注依据，chunk_id 必须来自工具结果或系统附带的正文。
+5. 正文没覆盖到结论时，直接说"现有条文不足以回答"，不要编造。"""
 
 FLAG_NO_TOOL = "NO_TOOL"
 FLAG_TOOL_CALLS_TRUNCATED = "TOOL_CALLS_TRUNCATED"
@@ -57,6 +60,10 @@ FINAL_ROUND_NUDGE = (
 )
 
 FLAG_TOOL_CALL_IN_CONTENT = "TOOL_CALL_IN_CONTENT"
+
+# 自动取证上限：与检索默认 top-k 一致；再多对作答无益，token 线性增长
+AUTO_ANCHOR_LIMIT = 5
+AUTO_ANCHOR_HEADER = "以下是本次检索命中片段的正文（系统自动取证，每个片段已截断至 {max_chars} 字）："
 
 # 模型把工具调用写进正文时常见的标记（2026-11-22 真实调用遇到 DeepSeek 的 DSML 形态）
 _TOOL_MARKUP_MARKERS = ("<｜｜DSML｜｜", "<|DSML|>", "<invoke", "<parameter")
@@ -142,6 +149,63 @@ def _digest(result: dict) -> dict:
     return {"keys": sorted(result)}
 
 
+def _format_anchor_block(payload: dict) -> str:
+    """正文块：首行给定位信息（chunk_id / 标题 / 条号 / 字符区间），第二行起是正文。"""
+    head = "[%s] %s" % (payload.get("chunk_id"), payload.get("title") or "（无标题）")
+    extra = []
+    if payload.get("article_no"):
+        extra.append(str(payload["article_no"]))
+    if payload.get("heading_path"):
+        extra.append(str(payload["heading_path"]))
+    if payload.get("char_start") is not None and payload.get("char_end") is not None:
+        extra.append("字符 %s-%s" % (payload["char_start"], payload["char_end"]))
+    if extra:
+        head = "%s %s" % (head, " ".join(extra))
+    return "%s\n%s" % (head, (payload.get("text") or "").strip())
+
+
+def _collect_anchor_texts(conf, results, *, max_chars: int, dispatch, limit: int = AUTO_ANCHOR_LIMIT):
+    """对本次 `search_laws` 的命中自动取正文，返回 (工具轨迹项, 拼给第 2 轮的正文块)。
+
+    只认 `hits`，按顺序去重、封顶 `limit` 个；单个正文由 `max_chars` 截断。
+    取不到不抛：记 `ok=False` 与错误码，模型见不到正文自会答「条文不足」。
+    """
+    entries: list[dict] = []
+    blocks: list[str] = []
+    seen: set[str] = set()
+    for result in results:
+        if len(seen) >= limit:
+            break
+        for hit in result.get("hits") or []:
+            if len(seen) >= limit:
+                break
+            chunk_id = hit.get("chunk_id")
+            if not chunk_id or chunk_id in seen:
+                continue
+            seen.add(chunk_id)
+            args = {"chunk_id": chunk_id, "max_chars": max_chars}
+            entry = {
+                "name": "get_anchor_text",
+                "args": json.dumps(args, ensure_ascii=False),
+                "ok": False,
+                "auto": True,
+            }
+            begin = time.perf_counter()
+            try:
+                payload = dispatch(conf, "get_anchor_text", dict(args))
+                entry["ok"] = True
+                entry["digest"] = _digest(payload)
+                blocks.append(_format_anchor_block(payload))
+            except tools.ToolError as exc:
+                entry["code"] = exc.code
+            except (TypeError, ValueError) as exc:
+                entry["code"] = schema.ToolArgError.code
+                entry["message"] = str(exc)[:120]
+            entry["elapsed_ms"] = round((time.perf_counter() - begin) * 1000, 1)
+            entries.append(entry)
+    return entries, "\n\n".join(blocks)
+
+
 def run(
     conf,
     query: str,
@@ -175,6 +239,7 @@ def run(
 
     flags: list[str] = []
     tool_trace: list[dict] = []
+    search_payloads: list[dict] = []
     allowed_ids: set[str] = set()
     answer = ""
     started = time.perf_counter()
@@ -239,6 +304,8 @@ def run(
                 entry["ok"] = True
                 entry["digest"] = _digest(result)
                 allowed_ids.update(_collect_ids(result))
+                if name == "search_laws":
+                    search_payloads.append(result)
                 tool_content = json.dumps(result, ensure_ascii=False)
             except tools.ToolError as exc:
                 entry["code"] = exc.code
@@ -255,6 +322,21 @@ def run(
             entry["elapsed_ms"] = round((time.perf_counter() - begin) * 1000, 1)
             tool_trace.append(entry)
             messages.append({"role": "tool", "tool_call_id": call_id, "content": tool_content})
+
+        if turn < settings.max_turns and search_payloads:
+            # 确定性取证：模型拿不到第二次工具窗口，正文由代码补齐后并入下一轮上下文
+            auto_entries, body = _collect_anchor_texts(
+                conf, search_payloads, max_chars=settings.max_tool_chars, dispatch=dispatch
+            )
+            tool_trace.extend(auto_entries)
+            if body:
+                messages.append(
+                    {
+                        "role": "system",
+                        "content": "%s\n\n%s"
+                        % (AUTO_ANCHOR_HEADER.format(max_chars=settings.max_tool_chars), body),
+                    }
+                )
 
     check = citation.validate(answer, allowed_ids)
     if not check["valid"]:

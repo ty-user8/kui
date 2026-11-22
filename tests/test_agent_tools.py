@@ -17,13 +17,19 @@ QUERY = "发明专利权的期限是几年"
 
 
 def load_conf_or_skip(tc: unittest.TestCase):
+    """缺 `RAG_DB_PATH`／库不存在时真正 Skip 掉依赖库与索引的用例（不是 ERROR）。
+
+    注意：`TestCase.skipTest` 是实例方法，在 `setUpClass` 里对类调用会变成
+    `TypeError: missing 1 required positional argument`；这里统一 `raise unittest.SkipTest`。
+    结构断言类不调用本函数，因此缺环境变量时仍会照常跑。
+    """
     try:
         conf = load()
         db = pathlib.Path(conf.require_db_path())
     except ConfigError as exc:
-        tc.skipTest("配置缺失（%s），跳过依赖库与索引的用例" % exc)
+        raise unittest.SkipTest("配置缺失（%s），跳过依赖库与索引的用例" % exc)
     if not db.is_file():
-        tc.skipTest("库不存在：%s" % db)
+        raise unittest.SkipTest("库不存在：%s" % db)
     return conf
 
 

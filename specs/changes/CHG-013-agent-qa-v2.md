@@ -344,4 +344,20 @@ CREATE TABLE IF NOT EXISTS agent_turns (
 | 单测 | S1 新增 32 例全绿；全量 156 例 OK（14.0 s） |
 | 未动 | `config.yaml`（`agent.*` 配额 S3 才接）、`src/api/**`、`src/eval/**`、`scripts/ci_check.py`、`eval.yml`、`app.py`、DB 迁移 |
 
+### S2（2026-11-22）
+
+| 项 | 结果 |
+| --- | --- |
+| 新增文件 | `src/agent/quota.py`（`AgentSettings` + `Quota`）、`src/agent/orchestrator.py`（两轮状态机）、`tests/test_agent_orchestrator.py`（17 例） |
+| 轮数 | 第 1 轮 `tool_choice="auto"`、第 2 轮强制 `"none"`；第 2 轮仍吐工具调用 → `TURN_LIMIT_HIT`，不开第 3 轮 |
+| 工具数 | 每轮上限 3，超出丢弃并标 `TOOL_CALLS_TRUNCATED`（单测用 4 个调用验证只执行 3 个） |
+| 超时 | 单次调用 `timeout_seconds`（默认 30 s，可注入更小值测），超时返回空答案 + `AGENT_TIMEOUT`，不再追加调用 |
+| 配额 | `Quota` 分问题级/会话级计数；超限抛 `AGENT_QUOTA_EXCEEDED`；`max_turns`／`max_tool_calls_per_turn`／`max_context_turns` 三项只能下调（`AgentSettings.__post_init__` 拦截） |
+| 参数非法 | tool arguments 非 JSON 或校验失败 → 该次结果折成错误 JSON 回填、标 `TOOL_ARGS_INVALID`，不重试、不中断本轮 |
+| 引用 | 复用 `citation.validate`；越界引用保留答案并标 `CITATION_INVALID` |
+| 隔离证据 | 集成用例（真 dispatch + 假客户端）断言 `trace.jsonl` 大小与 `data/runs/` 目录列表在 agent 调用前后不变 |
+| 单测 | S2 新增 17 例全绿；全量 173 例 OK（14.2 s）；无环境变量跑时 `test_agent_tools` 为 skip 而非 error |
+| 顺手修 | `tests/test_agent_tools.py` 的 `load_conf_or_skip` 原先在 `setUpClass` 里调 `tc.skipTest()`（实例方法），实际抛 `TypeError` 表现为 5 个 ERROR；改为 `raise unittest.SkipTest(...)`，现在缺 `RAG_DB_PATH` 时结构断言照跑、其余 5 类 skip |
+| 未动 | `config.yaml`（`agent.*` 接线 S3）、DB 迁移（S3）、8502 页面（S4）、`src/api/**`、`src/eval/**`、`ci_check.py`、`eval.yml` |
+
 **交付状态**：本单为已确认的设计基线，2026-11-22 已入库留档（仅本文件，`dev` 分支）；未改任何现有代码、规格、配置与基线，未开始实现。

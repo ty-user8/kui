@@ -1,6 +1,6 @@
 # 法规检索与评测（RAG）
 
-把 150 篇法律法规 DOCX 解析成可检索的条文片段，提供「向量 + BM25 融合」检索、可复现评测、HTTP 接口与单页演示。**单机 CPU 可跑，无外部向量库，评测回路 0 次 LLM 调用。**
+把 150 篇法律法规 DOCX 解析成可检索的条文片段，提供「向量 + BM25 融合」检索、可复现评测、HTTP 接口与两个演示页面。**单机 CPU 可跑，无外部向量库，评测回路 0 次 LLM 调用。**
 
 一句话看结果：150 篇 / 2704 个 chunk / 100 条人工标注用例，基线 `r31a95a0e1de6` 的 Recall@5 **0.9000**、MRR **0.7045**。
 
@@ -14,7 +14,7 @@
 | 检索 | 两路各取 20 候选，RRF（k=60）融合 | 两路分数量纲不同，只用排名，不归一 |
 | 重排 | `bge-reranker-base` 可选，默认关闭 | CPU 上 p50 约 5.3 s，超 3 s 熔断即回退融合序 |
 | 评测 | gold 锚点为「doc_id + 标题路径 + 字符区间」，按起点落入映射 | 6 项指标 + bootstrap 区间；`run_id` 由配置指纹决定 |
-| 接口 / 页面 | FastAPI 五接口；Streamlit 单页（v0.5） | 无鉴权、单用户；`/ask` 不进指标与 CI |
+| 接口 / 页面 | FastAPI 五接口；两个 Streamlit 页面（8501 检索回放、8502 问答 Agent） | 无鉴权、单用户；`/ask` 与 Agent 问答都不进指标与 CI |
 
 ## 2. 目录结构
 
@@ -23,11 +23,13 @@ rag/
 ├── config.yaml          # 运行参数（端口、切分、检索、配额；无密钥）
 ├── corpus/              # 150 篇 DOCX + manifest.json（只读）
 ├── src/parse|split|index|retrieve|eval|store|api|generate|ui/
+├── src/agent/           # 工具、两轮编排、会话记忆、配额
 ├── evals/               # cases.csv（100 条）、baseline.json、实验与失败归因
 ├── specs/               # 需求、架构、Schema、接口契约、变更单
 ├── scripts/             # 下载权重、CI 判定、规范化锁文件、冒烟
-├── tests/               # 124 例单测
-├── app.py               # Streamlit 单页
+├── tests/               # 205 例单测
+├── app.py               # Streamlit 检索回放页（8501）
+├── app_agent.py         # Streamlit 问答 Agent 页（8502）
 └── data/                # 运行产物：rag.db、index/、runs/、trace.jsonl（不入库）
 ```
 
@@ -133,7 +135,17 @@ $env:HF_HOME = ".cache/models"
   /search      检索结果（含 path / flags / 降级标记）
   /eval        评测 -> runs/metrics.json -> ci_check 基线比对
   /ask         检索 + 生成 + 引用校验（需 RAG_LLM_API_KEY）
-  Streamlit    单页：两路对照 / 融合 / rerank 前后名次变化
+  8501 页面     检索回放：两路对照 / 融合 / rerank 前后名次变化
+
+问答 Agent（8502 页面，独立进程）
+  query
+    -> 规则改写    指代 / 省略 / 相对年份补全，0 次模型调用
+    -> 两轮编排    第 1 轮带工具取证，第 2 轮只出答案
+    -> 4 个工具    search_laws / filter_metadata / get_anchor_text / get_stats
+                   （复用上面的检索链与 SQLite / manifest，不另建索引）
+    -> 引用校验    答案引用须落在当轮工具结果内
+    -> 会话落库    agent_sessions / agent_turns
+  隔离：不写 data/runs/、不追加 data/trace.jsonl、不写 runs 表与 metrics
 ```
 
 mermaid 源码（可复制到任意 mermaid 渲染器）：
@@ -158,9 +170,17 @@ flowchart LR
   L --> M
   M --> N["search 接口"]
   M --> O["eval 接口"]
-  M --> P["Streamlit 单页"]
-  M --> R["ask 接口 v0.5"]
+  M --> P["8501 检索回放页"]
+  M --> R["ask 接口"]
   R --> S["引用校验 规则式"]
+  M --> V["8502 问答页"]
+  V --> W["规则改写 0 次 API"]
+  W --> X["两轮编排 每轮最多 3 个工具"]
+  X --> Y["4 个工具 复用检索链"]
+  Y --> I
+  X --> Z["引用校验 规则式"]
+  Z --> AA["agent_sessions 与 agent_turns"]
+  Z -.->|不写 runs 与 trace| AB["隔离 评测与 CI 不受影响"]
   D --> O
   O --> T["runs metrics.json"]
   T --> U["ci_check 基线比对"]
@@ -174,10 +194,10 @@ flowchart LR
 | 默认账号 | **无** |
 | 密钥 | **只有 key** 从环境变量读（`RAG_LLM_API_KEY`），仓库内无密钥值；模型名与接口地址属非密钥，写在 `config.yaml` 的 `llm.model_name`／`llm.base_url`，`RAG_LLM_MODEL`／`RAG_LLM_BASE_URL` 可覆盖（`CHG-012`） |
 | 删除能力 | 无删除类命令；重建索引需人工覆盖 `data/index/` |
-| 外部调用 | 仅 `/ask` 调云端模型；`eval` 与 CI **0 次**调用 |
+| 外部调用 | `/ask` 与 8502 问答页面调云端模型；`eval` 与 CI **0 次**调用 |
 
 ## 10. 版本与推送
 
-- 版本线：v0.1 闭环 → v0.2 语料与融合 → v0.3 切分/rerank 实验 → v0.4 工程化（接口、过滤、增量、CI）→ v0.5 演示与生成。
+- 版本线：v0.1 闭环 → v0.2 语料与融合 → v0.3 切分/rerank 实验 → v0.4 工程化（接口、过滤、增量、CI）→ v0.5 演示与生成 → v2 多轮问答 Agent（4 个工具、两轮编排、会话记忆、8502 页面）。
 - 日常只推 `dev`；v0.5 交付时按 `CHG-009` 用 `--ff-only` 把 `dev` 快进合并到 `main` 推一次，全程不 force。
 - 进度与决策：`PROGRESS.md`、`CHANGELOG.md`、`CHANGELOG-DECISIONS.md`、`specs/changes/`。

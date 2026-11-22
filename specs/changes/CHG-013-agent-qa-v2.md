@@ -400,4 +400,18 @@ CREATE TABLE IF NOT EXISTS agent_turns (
 | 单测 | S4 新增 9 例 + 编排修缺陷加 1 例；全量 **204 例 OK**（18.9 s）；无环境变量 188 例 OK（6 skip，0 error） |
 | 未动 | `app.py`、`src/api/**`、`src/eval/**`、`ci_check.py`、`eval.yml`、`evals/**`、锁文件、基线 |
 
+### S5（2026-11-22）
+
+| 项 | 结果 |
+| --- | --- |
+| 规格回填 | 三处，均带版本／日期／依据（C.1 留痕材料，不按规则 #11 删元信息）：① `06-schemas/README.md` —— 存储清单加 `agent_sessions`／`agent_turns`（版本列 `v2（CHG-013，2026-11-22）`）、DDL 链补 `0004_agent.sql`、建表要点加 3 行（含「`tool_calls_json` 只存摘要」「不被 `/search`／`/eval`／CI 读取」）、对应表加 3 行；② `09-state.md` —— §6 由「规划」转「已落地」，逐条写落地位置，第 2 条按 D1 改写并说明为何不进 `run_id`；新增 §7（7.1 会话生命周期、7.2 单轮两轮状态机、7.3 v2 数据契约），并标注与 §3 的分界；③ `01-requirements.md` —— 新增 §6-I「问答 Agent（v2）」，REQ-059~REQ-068 共 10 条，含模式／版本／验证方式 |
+| 验收：单测 | 全量 **205 例 OK**（17.0 s，原 204 + 1 条新增 `/ask` 配额独立性用例）；无环境变量 189 例 OK（6 skip、0 error） |
+| 验收：基线 | `src.cli.eval` 落 `attempt-5`：`run_id=r31a95a0e1de6`，六项 0.5600／0.8600／0.9000／0.7045／0.7543／0.9000 与 `evals/baseline.json` 逐项相同；本地 `ci_check.py` 三项 PASS（`attempt-6`／`attempt-7` 的 `metrics.json` 逐字节一致 576 B、`run_id` 未变、无退化），退出码 0 |
+| 验收：隔离（真实调用） | 用户级 key 进程内注入，`deepseek-flash` 跑一问「假冒专利要承担什么法律责任」：`elapsed_ms=15964.0`、`citation_valid=true`、`invalid_citations=[]`、`flags=[]`、`stateless_mode=true`、2 次模型调用。前后比对：`data/runs/` 仍 15 个目录、`data/trace.jsonl` 仍 26695 B、`runs` 表 12 行、`traces` 表 10 行；只 `agent_sessions` +1、`agent_turns` +1 |
+| 验收：`/ask` 配额 | 新增 `tests/test_agent_orchestrator.py::test_agent_calls_do_not_touch_ask_quota`：agent 两次调用后 `ask._CALLS` 计数不变（记在 agent 自己的 `Quota` 上）；把 `ask._CALLS` 置 1e6（假设 `/ask` 配额打满）后 agent 仍能正常作答 |
+| 验收：依赖 | `requirements.txt`（995 B / `64a3227bc91c6b42`）与 `requirements.lock.txt`（1379 B / `da26d417ec5466fa`，73 行）均未动；`git status` 只有 3 份规格 + 1 个测试文件 |
+| 验收：CI | 14 步不变，回归判定 PASS（run 见 `CHANGELOG.md` 同批流水） |
+| 边界 | 未动 `evals/baseline.json`、锁文件、`src/api/**`、`src/eval/**`、`scripts/ci_check.py`、`.github/workflows/eval.yml`、`app.py`／8501 |
+| 交付 | 按 `D-025` 快进推 `main`（`merge-base --is-ancestor main dev` 退出码 0 → `--ff-only` → `push origin main`），不 force／不 amend／不 rebase |
+
 **交付状态**：本单为已确认的设计基线，2026-11-22 已入库留档（仅本文件，`dev` 分支）；未改任何现有代码、规格、配置与基线，未开始实现。

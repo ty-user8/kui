@@ -126,7 +126,7 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 | `specs/00-source/RAG检索项目技术方案_2026-11-14.md` | 29920 / `76b18223f807fff0` | 同左（未改） | 只读归档 |
 | `specs/00-source/README.md` | 1837 / `9300d2cfc74c4c44` | 同左（未改） | 只读归档说明 |
 | `specs/constitution.md` | 10472 / `69f9565c50c9edf5` | 10844 / `72663e47c75dfd11` | CHG-004：工程约定增「Python 解释器」行；CHG-012：第 2 条改为「密钥值只走环境变量，模型名与接口地址可写 `config.yaml`」 |
-| `specs/01-requirements.md` | 22871 / `ffe192c2895c71b5` | 23319 / `461b49f31bfee035` | CHG-003：5.3.2 保序约束与 `normalizer_version` 分支、REQ-031/032/036；CHG-005：5.1 的 `anchor_text` 口径改「区间回切的整段文本」 |
+| `specs/01-requirements.md` | 22871 / `ffe192c2895c71b5` | 26400 / `d7bba05eba2a709b` | CHG-003：5.3.2 保序约束与 `normalizer_version` 分支、REQ-031/032/036；CHG-005：5.1 的 `anchor_text` 口径改「区间回切的整段文本」；CHG-013 S5（2026-11-22）：新增 §6-I 问答 Agent 条款 REQ-059~REQ-068（原 23319 为 v0.5 时点值） |
 | `specs/02-scope.md` | 9942 / `1b856b27b710ec7f` | 10465 / `6db8c0cc0b221911` | CHG-003：§2.2 改 attempt 目录；CHG-006：§2 改 v0.1 实测值；T-010：新增 v0.2 全量实测段（150 篇 / 2704 chunk / 1,191,197 字）；CHG-011：行尾归一，与 blob 口径对齐（原记 10588 为归一前 CRLF 字节，= 10465 + 123 行） |
 | `specs/03-architecture.md` | —（G2 阶段产出，未入 G1 快照） | 5453 / `fcc9ec60007e7957` | CHG-006：§5 chunk 数改实测；T-010：回填全量 2704 / 1,191,197 字；CHG-011：行尾归一，与 blob 口径对齐（原记 5558 为归一前 CRLF 字节，= 5453 + 105 行） |
 | `specs/tasks.md` | —（G3 阶段产出） | 8091 / `8377c4fbbd3cbb01` | CHG-006：T-010 DoD 改后回填（原记 8010，差 81 与行尾无关，属 DoD 改动后未回填）；另 T-006 DoD 增索引体积回填与权重指纹 |
@@ -236,3 +236,6 @@ G1 于 2026-11-16 冻结。此后 `constitution.md`、`01-requirements.md`、`02
 - **`V05-11` 转通过（降级写法，2026-11-21）**：README 第 8 节改为 `text` 代码块的 ASCII 框图（入库 / 检索 / 出口三段，150 篇、2704 chunk、向量+BM25、RRF k=60、五接口、引用校验齐全），mermaid 源码以文本形式附后，不再依赖 GitHub 在线渲染。三次失败尝试已记入上一段与 `CHANGELOG.md`；本地语法校验仍为 `PARSE OK`。
 - `12-release-checklist.md` 已补 v0.5 专项 12 项：V05-09（`/ask` 真实模型）、V05-11（mermaid 渲染）、V05-12（真实 runner）分别标「待补／未验证／待验证」。
 - 下一步：v0.5 收尾（G4 材料与 V05 逐条核对；`/ask` 接真 key 后补一次完整真跑）。
+- **v2 S5 完成（2026-11-22，`CHG-013`）**：规格回填三处——`06-schemas/README.md` 两表说明与 DDL 链、`09-state.md` §6 转「已落地」并新增 §7 会话/单轮状态机、`01-requirements.md` 新增 §6-I（REQ-059~068），均带版本／日期／依据。验收：全量 **205 例 OK**（无 env 189 例 OK、6 skip）；`attempt-5` 的 `run_id=r31a95a0e1de6` 与六项逐项不变，本地 `ci_check` 三项 PASS；真实 `deepseek-flash` 跑一问（15964.0 ms、`citation_valid=true`、`flags=[]`）前后 `data/runs` 15 目录、`trace.jsonl` 26695 B、`runs` 12 行、`traces` 10 行全不变，只 `agent_sessions`／`agent_turns` 各 +1；`/ask` 配额独立性由新增用例守住；依赖未动。本批 diff 仅 3 份规格 + 1 个测试文件。
+- **待你定（可选）**：本地 `data/rag.db` 的 `agent_sessions`／`agent_turns` 现有联调留下的 8 条会话、11 轮（含 S5 实测 1 条），`data/` 不入库；演示前要不要清成空表，你一句话我执行——只 `DELETE` 这两张表的行，不动 `documents`／`chunks`／`runs`／`traces`。
+- **发现（未改，待你定）**：`CHG-013` §8.1 原写「决策条目随 S1 落地时一并补记」，但 `CHANGELOG-DECISIONS.md` 至今只到 `D-025`，v2 的 D1~D5 **尚未成条**。补 `D-026` 属纯留痕，不在本批「只补三处规格」的授权内，故未动。

@@ -240,6 +240,24 @@ class TestTwoRoundFlow(unittest.TestCase):
             orchestrator.run(self.conf, "   ", client=FakeClient([]), dispatch_fn=self.dispatch)
         self.assertEqual(ctx.exception.code, "INVALID_REQUEST")
 
+    def test_agent_calls_do_not_touch_ask_quota(self):
+        """REQ-066：agent 用自己的 `Quota`，不读也不改 `/ask` 的 `llm.max_calls` 计数器。"""
+        from src.generate import ask as ask_mod
+
+        before = ask_mod._CALLS.get("n", 0)
+        result, _ = self.run_agent(
+            [tool_call_response(FakeToolCall("search_laws", {"query": QUERY})), message("好。[c1]")]
+        )
+        self.assertEqual(ask_mod._CALLS.get("n", 0), before)  # agent 的两次调用没记到 /ask 账上
+        self.assertEqual(result["quota"]["session_calls"], 2)  # 记在 agent 自己的 Quota 上
+
+        ask_mod._CALLS["n"] = 10**6  # 假设 /ask 配额已打满
+        try:
+            result2, _ = self.run_agent([message("照常作答。")])
+            self.assertEqual(result2["answer"], "照常作答。")  # agent 照跑，不受 /ask 配额影响
+        finally:
+            ask_mod._CALLS["n"] = before
+
 
 class TestSettingsAndQuota(unittest.TestCase):
     def test_hard_caps_cannot_be_raised(self):

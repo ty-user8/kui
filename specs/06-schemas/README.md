@@ -7,12 +7,13 @@
 | `data/rag.db`（SQLite） | `documents`、`chunks`、`eval_cases`、`runs` | v0.1 |
 | 同上 | `parents` | v0.3 |
 | 同上 | `traces`、`ingest_log` | v0.4 |
+| 同上 | `agent_sessions`、`agent_turns`（问答会话与轮次） | v2（`CHG-013`，2026-11-22） |
 | `data/index/faiss.idx` + `faiss.ids.json` | 向量索引与 id 映射 | v0.1 |
 | `data/index/bm25.pkl` | 稀疏索引 | v0.2 |
 | `data/trace.jsonl` | trace 明细的**唯一权威**（追加写） | v0.2 |
 | `data/runs/<run_id>/attempt-N/` | `metrics.json`、`timing.json`、`meta.json`；每次运行一个 attempt 目录 | v0.1 |
 
-DDL 全部在 `migrations/`，按编号顺序执行；当前全量 = `0001_init.sql` → `0002_parents.sql` → `0003_runtime.sql`。
+DDL 全部在 `migrations/`，按编号顺序执行；当前全量 = `0001_init.sql` → `0002_parents.sql` → `0003_runtime.sql` → `0004_agent.sql`（v2，2026-11-22，依据 `CHG-013` §8.2；只新增两张表与一个索引，`0001`~`0003` 未改）。
 
 ## 2. 建表要点
 
@@ -30,6 +31,9 @@ DDL 全部在 `migrations/`，按编号顺序执行；当前全量 = `0001_init.
 | `eval_cases` | `split` CHECK | `dev` / `holdout`，holdout 调参期不读 |
 | `runs` | `run_id` 主键 | 一次实验一行；`metrics_json` 为快照，便于跨版本对比 |
 | `traces` | 无外键到 `runs` | 由 JSONL 导入，允许先有 trace 后有 run 记录补写；`source_run_id` 记录来源，`imported_at` 记录导入时间；只存摘要字段，`dense`／`bm25`／`fused`／`reranked` 明细只留在 JSONL |
+| `agent_sessions` | `session_id` 主键；`stateless_mode` CHECK（0/1） | v2 起：一次问答会话一行，`turn_count` 记累计轮数。会话过期按 `session_ttl_hours` **读时判定**，不设后台清理任务（D2）；`stateless_mode` 恒写 1，评测路径不经此表 |
+| `agent_turns` | `UNIQUE(session_id, turn_no)`；外键 `ON DELETE CASCADE` | v2 起：一轮问答一行；同一 `(session_id, turn_no)` 重写即覆盖，不插重复行。`query_raw` 与 `query_rewritten` 都存，`rewrite_rule` 记规则名（`pronoun_carryover`／`ellipsis_append`／`date_inherit`／`none`）；`tool_calls_json` **只存摘要**（工具名、参数、是否成功、条数、top-1 `chunk_id`），不复制正文 |
+| `agent_*` | 与 `documents`／`chunks`／`runs`／`traces` 无外键 | v2 起：会话数据独立存储；`/search`、`/eval`、`scripts/ci_check.py` 与 CI 均不读这两张表，问答调用不写 `traces`／`runs`／`metrics.json` |
 
 ## 3. `run_id` 生成规则
 
@@ -78,3 +82,6 @@ run_id      = "r" + config_hash[:12]
 | `runs.*` | REQ-031、REQ-032、D-012、B8 |
 | `runs.deps_sha256` | 依赖锁比对，Verify 环境一致性 |
 | `traces.excerpt`、`traces.source_run_id` | REQ-039、D-009；trace 读取路径 |
+| `agent_sessions.session_id/stateless_mode/last_active_at` | REQ-063、REQ-067、`CHG-013` §8.1（D1）、§8.2 |
+| `agent_turns.query_raw/query_rewritten/rewrite_rule` | REQ-064、`CHG-013` §8.2 |
+| `agent_turns.tool_calls_json/flags` | REQ-059、REQ-060、REQ-065、`CHG-013` §8.2（只存摘要） |

@@ -239,6 +239,23 @@ v1 的处置：表格文本不计入基准文本；`documents` 表记 `tables_co
 | REQ-057 | 普遍 | 系统应当把同名不同公布日期的法规视为独立文档（以 `doc_id` 区分），检索结果返回 `doc_id` 与 `publish_date`，不按标题合并或去重 | v0.1 | 水法／商标法／农业法三组各取一条 query 验证 |
 | REQ-058 | 当索引写入完成时 | 系统应当断言 `documents` 行数等于入索引清单条数、`chunks` 行数大于 0，否则视为 ingest 失败 | v0.1 | 行数断言 |
 
+### I 问答 Agent（v2）
+
+依据 `CHG-013`（2026-11-22 确认，S1~S5 落地）；工具清单、配额项与隔离设计见该变更单 §4~§8。本段只登记可验收的行为约束。鉴权沿用 REQ-056（无鉴权），页面与工具入参校验沿用现有 pydantic。
+
+| 编号 | 模式 | 条款 | 版本 | 验证方式 |
+| --- | --- | --- | --- | --- |
+| REQ-059 | 当模型返回工具调用时 | 系统应当只执行工具清单内的调用，参数经 pydantic 校验；每轮最多 3 个、全程最多 2 轮，超出部分丢弃并标 `TOOL_CALLS_TRUNCATED`，第 2 轮仍要工具则标 `TURN_LIMIT_HIT` 且不开第 3 轮 | v2 | 假客户端注入 4 个调用与第 2 轮再调用；断言执行数 3、模型调用次数 2 |
+| REQ-060 | 如果工具参数不是合法 JSON 或未通过校验 | 则系统应当把结构化错误（`TOOL_ARGS_INVALID`）当作工具结果回填，不重试、不向模型追加同一请求 | v2 | 非法参数与坏 JSON 各一例；断言工具只执行 1 次、不开第 3 轮 |
+| REQ-061 | 普遍 | 系统应当复用既有检索链与 `documents`／`chunks`／`manifest`，不为工具层另建索引或语料副本 | v2 | 工具调用前后 `data/index/` 与 `corpus/` 无新增产物；`search_laws` 结果与 `service.search` 逐条一致 |
+| REQ-062 | 当一次 agent 问答执行时 | 系统应当只写 `agent_sessions`／`agent_turns`，不新增 `data/runs/` 目录、不向 `data/trace.jsonl` 追加行、不写 `runs` 表与 `metrics.json` | v2 | 调用前后目录列表与文件大小比对；此后 CI 判定不受影响 |
+| REQ-063 | 当一轮问答开始时 | 系统应当按 `agent.session_ttl_hours` 读时判定会话是否过期，过期即分配新会话 id 且不迁移旧轮次；不设后台清理任务 | v2 | 构造 25 h 前的 `last_active_at`，断言 `expired=true` 且返回新 id |
+| REQ-064 | 当查询含指代、省略或相对年份时 | 系统应当用规则式改写补全（0 次模型调用），并把原始 query、改写后 query 与规则名一并写入 `agent_turns` | v2 | 三类改写各一例；断言无客户端调用、`rewrite_rule` 落库 |
+| REQ-065 | 如果单次模型调用超时或配额耗尽 | 则系统应当返回结构化标记（`AGENT_TIMEOUT`／`AGENT_QUOTA_EXCEEDED`），不追加调用、不伪造答案 | v2 | 注入 0.05 s 超时与超配额各一例 |
+| REQ-066 | 普遍 | 系统应当让 agent 配额与 `/ask` 的 `llm.max_calls` 相互独立：agent 调用不占 `/ask` 配额，`/ask` 调用也不占 agent 配额 | v2 | 两侧分别触发上限，互不影响 |
+| REQ-067 | 普遍 | 系统应当把 `stateless_mode` 声明在响应字段与 `agent_sessions.stateless_mode` 列，且不写入 `run_id` 规范串 | v2 | 响应字段为 `true`、列为 1；评测 `run_id` 与六项指标不变 |
+| REQ-068 | 如果 `config.yaml` 的 `agent` 段把 `max_turns`／`max_tool_calls_per_turn`／`max_context_turns` 调到默认值以上 | 则系统应当在加载配置时报错并拒绝启动 | v2 | 篡改临时配置后 `load()` 抛 `ConfigError` |
+
 ## 7. 术语
 
 | 术语 | 含义 |

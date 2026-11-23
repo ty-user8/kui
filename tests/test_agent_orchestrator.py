@@ -93,6 +93,27 @@ def memory_dispatch(record: list):
     return _dispatch
 
 
+class FakeStreamClient:
+    """首轮照常返回响应；末轮（带 `stream=True`）返回逐块迭代。"""
+
+    def __init__(self, first_response, deltas: list[str]) -> None:
+        self.first = first_response
+        self.deltas = deltas
+        self.calls: list[dict] = []
+        self.chat = SimpleNamespace(completions=SimpleNamespace(create=self._create))
+
+    def _create(self, **kwargs):
+        self.calls.append(kwargs)
+        if kwargs.get("stream"):
+            return iter(
+                [
+                    SimpleNamespace(choices=[SimpleNamespace(delta=SimpleNamespace(content=text))])
+                    for text in self.deltas
+                ]
+            )
+        return self.first
+
+
 def load_conf_or_skip(tc: unittest.TestCase):
     """缺环境变量或库不存在时真正 Skip（不是 ERROR）。"""
     try:
@@ -139,6 +160,39 @@ class TestTwoRoundFlow(unittest.TestCase):
         self.assertTrue(result["tool_trace"][1]["auto"])
         self.assertTrue(result["stateless_mode"])
         self.assertEqual(self.seen[0][0], "search_laws")
+
+    def test_streaming_final_round_delivers_refs(self):
+        """末轮流式：逐块回调拼接即答案；进入末轮前先交出可读引用映射。"""
+        client = FakeStreamClient(
+            tool_call_response(FakeToolCall("search_laws", {"query": QUERY})),
+            ["期限", "为", "二十年", "。[c1]"],
+        )
+        tokens: list[str] = []
+        refs: dict = {}
+        result = orchestrator.run(
+            self.conf,
+            QUERY,
+            client=client,
+            dispatch_fn=self.dispatch,
+            on_token=tokens.append,
+            on_refs=lambda mapping: refs.update(mapping),
+        )
+        self.assertEqual("".join(tokens), "期限为二十年。[c1]")
+        self.assertEqual(result["answer"], "期限为二十年。[c1]")
+        self.assertEqual(len(client.calls), 2)
+        self.assertTrue(client.calls[1]["stream"])  # 只有末轮走流式
+        self.assertNotIn("tools", client.calls[1])
+        self.assertEqual(refs["c1"]["title"], "专利法")
+        self.assertEqual(result["citation_refs"]["c1"]["article_no"], "第四十二条")
+        self.assertTrue(result["citation_valid"])
+
+    def test_citation_refs_present_without_callbacks(self):
+        """不传回调时行为不变，但仍返回引用映射供展示层用。"""
+        result, client = self.run_agent(
+            [tool_call_response(FakeToolCall("search_laws", {"query": QUERY, "top_k": 5})), message("好。[c1]")]
+        )
+        self.assertEqual(len(client.calls), 2)
+        self.assertEqual(result["citation_refs"]["c1"], {"title": "专利法", "article_no": "第四十二条"})
 
     def test_tools_payload_matches_chat_api(self):
         """真实调用要求 `{"type":"function","function":{...}}`，扁平结构会被 422 拒。"""

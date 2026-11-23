@@ -1,35 +1,43 @@
-"""8502 页面：多轮问答（`CHG-013` S4）。
+"""8502 页面：多轮问答（`CHG-013` S4／展示层整理）。
+
+用户端只出现四类东西：问题、答案、可读的法规依据、以及「正在检索／正在作答」的进度提示。
+会话 id、配额数字、超时与轮数、flags、工具链、改写过程、错误码都留在数据层与日志里，不上页面。
 
 - 问答只在本进程内走 `orchestrator.run`，**不新增 HTTP 接口**（D4）；
 - 会话与轮次存 SQLite 的 `agent_sessions`／`agent_turns`（`memory` 首次连库时自动应用 0004）；
-- 每轮先把当前问法交给 `memory.rewrite_query` 做规则式补全（0 次 API），再决定检索；
-- 模型客户端在 `_make_client` 里现建，缺 `RAG_LLM_API_KEY` 就明确提示，不静默降级。
+- 生成层的 `[chunk_id]` 标注保留（`citation.validate` 靠它判定越界），只在渲染时替换成
+  《法规名》第X条；未知 id 与半截标记一律隐藏。
 """
 
 from __future__ import annotations
 
+import json
+import logging
 import os
+import re
+import time
 
 import streamlit as st
 
-from src.agent import memory, orchestrator, quota
+from src.agent import memory, orchestrator, quota, tools
 from src.config import ConfigError, load
 from src.generate.ask import resolve_base_url, resolve_model
 
-FLAG_LABELS = {
-    "NO_TOOL": "未调用工具，直接作答",
-    "TOOL_CALLS_TRUNCATED": "工具调用超出上限，已截断",
-    "TURN_LIMIT_HIT": "已达两轮上限，用现有结果作答",
-    "AGENT_TIMEOUT": "模型超时，答案留空",
-    "TOOL_ARGS_INVALID": "工具参数非法，已跳过该调用",
-    "CITATION_INVALID": "引用越界（答案保留）",
-}
+LOGGER = logging.getLogger(__name__)
 
-REWRITE_LABELS = {
-    memory.RULE_PRONOUN: "指代补全",
-    memory.RULE_ELLIPSIS: "省略补全",
-    memory.RULE_DATE: "相对年份替换",
+CITATION_RE = re.compile(r"\[([^\[\]]{1,80})\]")
+PARTIAL_CITATION_RE = re.compile(r"\[[^\[\]]*$")
+ARTICLE_RE = re.compile(r"第[一二三四五六七八九十百千零〇\d]+条")
+SENTENCE_END_RE = re.compile(r"[。；;！？\n]")
+
+ERROR_TEXT = {
+    "AGENT_QUOTA_EXCEEDED": "本轮提问次数已用完，请新开一个会话继续问。",
+    "INVALID_REQUEST": "这个问题没法处理，换个问法再试试。",
 }
+DEFAULT_ERROR_TEXT = "暂时无法生成答案，请稍后再试。"
+NO_ANSWER_TEXT = "这轮没有生成答案，换个问法再试试。"
+WAITING_TEXT = "正在检索条文…"
+WRITING_TEXT = "已取到 %d 段条文，正在作答…"
 
 
 def _make_client(conf):
@@ -54,47 +62,86 @@ def _session_state(conf) -> dict:
     return st.session_state["agent_session"]
 
 
-def _flags_note(flags: list[str]) -> str | None:
-    if not flags:
-        return None
-    return "；".join(FLAG_LABELS.get(flag, flag) for flag in flags)
+def _readable_ref(chunk_id: str, refs: dict | None, *, with_article: bool = True) -> str:
+    """`chunk_id` → `（《专利法》第四十二条）`；查不到就给空串，绝不回显 id。"""
+    meta = (refs or {}).get(chunk_id) or {}
+    title = (meta.get("title") or "").strip()
+    article = (meta.get("article_no") or "").strip() if with_article else ""
+    if title and article:
+        # 片段锚点是「从哪条开始」，一块常横跨数条 → 用「起」标明，不冒充精确条号
+        return "（《%s》%s起）" % (title, article)
+    if title:
+        return "（《%s》）" % title
+    if article:
+        return "（%s起）" % article
+    return ""
 
 
-def _tool_summary(tool_calls_json: str) -> str:
-    """把入库的 tool_calls 摘要折成一行，便于页面上核对"这轮查了什么"。"""
-    import json
+def _render_answer(text: str, refs: dict | None = None) -> str:
+    """展示用答案：`[chunk_id]` 换成可读依据；末尾未完的 `[` 先切掉，避免闪出半截 id。
 
-    try:
-        calls = json.loads(tool_calls_json or "[]")
-    except json.JSONDecodeError:
+    条号的处理：片段锚点是「这一块从哪条开始」，可能与正文点名的条号不同（一块常横跨数条）。
+    正文同句已写出「第X条」时只标法规名，避免出现「引第四十二条、括号写第三十八条」这种矛盾；
+    正文没写条号时才补片段起始条，并写成「第三十八条起」以表明这是片段起点（一块常横跨数条）。
+    相邻完全相同的括号合并为一个。
+    """
+    if not text:
         return ""
-    parts = []
-    for call in calls:
-        name = call.get("name", "?")
-        if call.get("ok"):
-            digest = call.get("digest") or {}
-            detail = digest.get("count", digest.get("chunk_id", ""))
-            parts.append("%s(%s)" % (name, detail))
-        else:
-            parts.append("%s ✗ %s" % (name, call.get("code", "ERROR")))
-    return " · ".join(parts)
+    cleaned = PARTIAL_CITATION_RE.sub("", text)
+    parts: list[str] = []
+    cursor = 0
+    previous = ""
+    for match in CITATION_RE.finditer(cleaned):
+        segment = cleaned[cursor:match.start()]
+        parts.append(segment)
+        sentence = SENTENCE_END_RE.split(segment)[-1] if segment else ""
+        ref = _readable_ref(
+            match.group(1), refs, with_article=not ARTICLE_RE.search(sentence)
+        )
+        if ref and ref == previous:
+            ref = ""
+        parts.append(ref)
+        previous = ref or previous
+        cursor = match.end()
+    parts.append(cleaned[cursor:])
+    return "".join(parts)
+
+
+def _human_error(exc) -> str:
+    return ERROR_TEXT.get(getattr(exc, "code", ""), DEFAULT_ERROR_TEXT)
+
+
+def _citations_of(turn: dict) -> list[str]:
+    try:
+        ids = json.loads(turn.get("citations_json") or "[]")
+    except json.JSONDecodeError:
+        return []
+    return [item for item in ids if isinstance(item, str)]
+
+
+def _load_refs(conf, chunk_ids) -> dict:
+    """历史回放用：按 id 批量取标题与条号；库或索引读不到就退回空映射（标记自然隐藏）。"""
+    unique = {chunk_id for chunk_id in chunk_ids if chunk_id}
+    if not unique:
+        return {}
+    try:
+        return tools.describe_chunks(conf, sorted(unique))
+    except Exception as exc:  # 展示层不因查不到元数据而崩
+        LOGGER.warning("取引用元数据失败：%s", exc)
+        return {}
 
 
 def _render_history(conf, session_id: str) -> None:
-    for turn in memory.load_turns(conf, session_id, limit=20):
+    turns = memory.load_turns(conf, session_id, limit=20)
+    refs = _load_refs(conf, [chunk_id for turn in turns for chunk_id in _citations_of(turn)])
+    for turn in turns:
         question = turn.get("query_rewritten") or turn.get("query_raw") or ""
         st.chat_message("user").write(question)
         with st.chat_message("assistant"):
             if turn.get("answer"):
-                st.markdown(turn["answer"])
+                st.markdown(_render_answer(turn["answer"], refs))
             else:
-                st.caption("（本轮没有答案）")
-            note = _flags_note([flag for flag in (turn.get("flags") or "").split(",") if flag])
-            if note:
-                st.caption(note)
-            summary = _tool_summary(turn.get("tool_calls_json") or "[]")
-            if summary:
-                st.caption("工具：" + summary)
+                st.caption(NO_ANSWER_TEXT)
 
 
 def render() -> None:
@@ -102,27 +149,18 @@ def render() -> None:
     try:
         conf = load()
     except ConfigError as exc:
-        st.error("配置错误：%s" % exc)
+        LOGGER.error("配置加载失败：%s", exc)
+        st.error("配置有误，暂时无法打开问答页面。")
         return
 
     session = _session_state(conf)
     settings = quota.AgentSettings.from_conf(conf)
-    used = st.session_state["agent_quota"].snapshot()
 
     st.title("法规问答 Agent")
-    st.caption(
-        "会话 %s · 已用 %d/%d 次调用 · 单次超时 %d s · 最多 %d 轮"
-        % (
-            session["session_id"][:8],
-            used["session_calls"],
-            settings.max_calls_per_session,
-            settings.timeout_seconds,
-            settings.max_turns,
-        )
-    )
+    st.caption("只依据语料库条文作答；答案后附法规名与条号，条文不足时会直接说明。")
 
     if session.get("expired"):
-        st.info("上一个会话已超过 %g 小时未活动，已开启新会话。" % settings.session_ttl_hours)
+        st.info("上一个会话已过期，已开启新会话。")
 
     _render_history(conf, session["session_id"])
 
@@ -135,49 +173,56 @@ def render() -> None:
         try:
             client = _make_client(conf)
         except RuntimeError as exc:
-            st.error(str(exc))
+            LOGGER.warning("%s", exc)
+            st.warning("尚未配置模型访问凭证，暂时无法生成答案。")
             return
 
         turns = memory.load_turns(conf, session["session_id"], limit=settings.max_context_turns)
         rewrite = memory.rewrite_query(prompt, turns)
-        if rewrite.rule in REWRITE_LABELS:
-            st.caption("%s：%s" % (REWRITE_LABELS[rewrite.rule], rewrite.query))
-
         history = memory.history_for_prompt(conf, session["session_id"], limit=settings.max_context_turns)
-        with st.spinner("检索并生成…"):
-            try:
-                result = orchestrator.run(
-                    conf,
-                    rewrite.query,
-                    client=client,
-                    settings=settings,
-                    quota=st.session_state["agent_quota"],
-                    history=history,
-                )
-            except orchestrator.AgentError as exc:
-                st.error("%s：%s" % (exc.code, exc.message))
-                return
 
-        if result["answer"]:
-            st.markdown(result["answer"])
-        else:
-            st.caption("（模型没有给出答案）")
-        note = _flags_note(result["flags"])
-        if note:
-            st.caption(note)
-        if result["tool_trace"]:
-            st.caption(
-                "工具："
-                + " · ".join(
-                    "%s%s%s"
-                    % (
-                        item["name"],
-                        "（自动）" if item.get("auto") else "",
-                        "" if item.get("ok") else " ✗ %s" % item.get("code", ""),
-                    )
-                    for item in result["tool_trace"]
-                )
+        placeholder = st.empty()
+        placeholder.caption(WAITING_TEXT)
+        streamed = {"text": "", "refs": {}}
+
+        def on_refs(refs: dict) -> None:
+            streamed["refs"] = dict(refs)
+            if refs:
+                placeholder.caption(WRITING_TEXT % len(refs))
+
+        last_paint = {"at": 0.0}
+
+        def on_token(delta: str) -> None:
+            streamed["text"] += delta
+            now = time.monotonic()
+            if now - last_paint["at"] < 0.06:  # 合并高频分块，避免每 token 都推一次前端
+                return
+            last_paint["at"] = now
+            placeholder.markdown(_render_answer(streamed["text"], streamed["refs"]))
+
+        try:
+            result = orchestrator.run(
+                conf,
+                rewrite.query,
+                client=client,
+                settings=settings,
+                quota=st.session_state["agent_quota"],
+                history=history,
+                on_token=on_token,
+                on_refs=on_refs,
             )
+        except orchestrator.AgentError as exc:
+            LOGGER.warning("问答失败：%s %s", getattr(exc, "code", ""), exc)
+            placeholder.empty()
+            st.warning(_human_error(exc))
+            return
+
+        answer = result["answer"] or streamed["text"]
+        if answer:
+            placeholder.markdown(_render_answer(answer, result.get("citation_refs") or streamed["refs"]))
+        else:
+            placeholder.empty()
+            st.caption(NO_ANSWER_TEXT)
 
         memory.record_turn(
             conf,
@@ -193,4 +238,3 @@ def render() -> None:
             flags=result["flags"],
             elapsed_ms=result["elapsed_ms"],
         )
-        st.rerun()

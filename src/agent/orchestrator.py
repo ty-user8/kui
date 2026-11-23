@@ -28,6 +28,7 @@ from __future__ import annotations
 import json
 import time
 from concurrent.futures import ThreadPoolExecutor
+from types import SimpleNamespace
 
 from src.agent import schema, tools
 from src.agent.quota import AgentSettings, Quota, QuotaExceeded
@@ -103,6 +104,53 @@ def _call_model(
     return client.chat.completions.create(**kwargs)
 
 
+class _StreamTimeout(TimeoutError):
+    """流式生成超过总时限；带上已产出的部分，便于保留半截答案。"""
+
+    def __init__(self, partial: str) -> None:
+        super().__init__("stream timeout")
+        self.partial = partial
+
+
+def _delta_text(event) -> str:
+    choices = getattr(event, "choices", None) or []
+    if not choices:
+        return ""
+    delta = getattr(choices[0], "delta", None)
+    if delta is None:
+        return ""
+    return getattr(delta, "content", "") or ""
+
+
+def _call_model_stream(client, model: str, messages: list[dict], timeout: float, on_token, deadline: float):
+    """末轮流式生成：逐块回调 `on_token`，累积成与非流式一致的响应对象。
+
+    超时按总时限判定（`deadline`），抛 `_StreamTimeout` 并带出已产出的文本。
+    """
+    stream = client.chat.completions.create(model=model, messages=messages, timeout=timeout, stream=True)
+    parts: list[str] = []
+    for event in stream:
+        text = _delta_text(event)
+        if text:
+            parts.append(text)
+            on_token(text)
+        if time.monotonic() > deadline:
+            raise _StreamTimeout("".join(parts))
+    content = "".join(parts)
+    return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=content, tool_calls=[]))])
+
+
+def _collect_refs(result: dict, refs: dict[str, dict]) -> None:
+    """把命中片段的可读定位（标题 / 条号）记下来，供展示层把 [chunk_id] 换成人类可读依据。"""
+    for hit in result.get("hits") or []:
+        chunk_id = hit.get("chunk_id")
+        if chunk_id:
+            refs[chunk_id] = {"title": hit.get("title"), "article_no": hit.get("article_no")}
+    chunk_id = result.get("chunk_id")
+    if chunk_id:
+        refs[chunk_id] = {"title": result.get("title"), "article_no": result.get("article_no")}
+
+
 def _looks_like_tool_markup(content: str) -> bool:
     return any(marker in (content or "") for marker in _TOOL_MARKUP_MARKERS)
 
@@ -164,7 +212,9 @@ def _format_anchor_block(payload: dict) -> str:
     return "%s\n%s" % (head, (payload.get("text") or "").strip())
 
 
-def _collect_anchor_texts(conf, results, *, max_chars: int, dispatch, limit: int = AUTO_ANCHOR_LIMIT):
+def _collect_anchor_texts(
+    conf, results, *, max_chars: int, dispatch, limit: int = AUTO_ANCHOR_LIMIT, refs: dict | None = None
+):
     """对本次 `search_laws` 的命中自动取正文，返回 (工具轨迹项, 拼给第 2 轮的正文块)。
 
     只认 `hits`，按顺序去重、封顶 `limit` 个；单个正文由 `max_chars` 截断。
@@ -196,6 +246,8 @@ def _collect_anchor_texts(conf, results, *, max_chars: int, dispatch, limit: int
                 entry["ok"] = True
                 entry["digest"] = _digest(payload)
                 blocks.append(_format_anchor_block(payload))
+                if refs is not None:
+                    _collect_refs(payload, refs)
             except tools.ToolError as exc:
                 entry["code"] = exc.code
             except (TypeError, ValueError) as exc:
@@ -216,8 +268,15 @@ def run(
     history: list[dict] | None = None,
     dispatch_fn=None,
     root: str = ".",
+    on_token=None,
+    on_refs=None,
 ) -> dict:
-    """跑一次问答。`client` 必须注入（真客户端或假客户端），本函数不自己建连接。"""
+    """跑一次问答。`client` 必须注入（真客户端或假客户端），本函数不自己建连接。
+
+    `on_token`／`on_refs` 只服务展示层：前者在末轮流式产出时逐块回调，后者在进入末轮前
+    交出 `chunk_id -> {title, article_no}` 映射，便于页面把引用渲染成可读依据；不传时行为与
+    非流式完全一致（测试与 CI 走这条路径）。
+    """
     text = (query or "").strip()
     if not text:
         raise AgentError("INVALID_REQUEST", "query 不能为空")
@@ -240,6 +299,8 @@ def run(
     flags: list[str] = []
     tool_trace: list[dict] = []
     search_payloads: list[dict] = []
+    citation_refs: dict[str, dict] = {}
+    refs_sent = False
     allowed_ids: set[str] = set()
     answer = ""
     started = time.perf_counter()
@@ -252,16 +313,39 @@ def run(
 
         tool_choice = "auto" if turn == 1 else None  # 末轮摘掉工具，见 `_call_model` 注释
         if tool_choice is None:
+            if on_refs is not None and not refs_sent:
+                on_refs(dict(citation_refs))
+                refs_sent = True
             messages.append({"role": "system", "content": FINAL_ROUND_NUDGE})
-        executor = ThreadPoolExecutor(max_workers=1)
-        try:
-            future = executor.submit(_call_model, client, model, list(messages), tool_choice, settings.timeout_seconds)
-            response = future.result(timeout=settings.timeout_seconds)
-        except TimeoutError:
-            elapsed = round((time.perf_counter() - started) * 1000, 1)
-            return _result("", [], True, [], [FLAG_AGENT_TIMEOUT], model, tool_trace, elapsed, quota)
-        finally:
-            executor.shutdown(wait=False)
+
+        if on_token is not None and tool_choice is None:
+            try:
+                response = _call_model_stream(
+                    client,
+                    model,
+                    list(messages),
+                    settings.timeout_seconds,
+                    on_token,
+                    time.monotonic() + settings.timeout_seconds,
+                )
+            except _StreamTimeout as exc:
+                flags.append(FLAG_AGENT_TIMEOUT)
+                answer = exc.partial
+                break
+        else:
+            executor = ThreadPoolExecutor(max_workers=1)
+            try:
+                future = executor.submit(
+                    _call_model, client, model, list(messages), tool_choice, settings.timeout_seconds
+                )
+                response = future.result(timeout=settings.timeout_seconds)
+            except TimeoutError:
+                elapsed = round((time.perf_counter() - started) * 1000, 1)
+                return _result(
+                    "", [], True, [], [FLAG_AGENT_TIMEOUT], model, tool_trace, elapsed, quota, citation_refs
+                )
+            finally:
+                executor.shutdown(wait=False)
 
         content, tool_calls = _message_of(response)
 
@@ -304,6 +388,7 @@ def run(
                 entry["ok"] = True
                 entry["digest"] = _digest(result)
                 allowed_ids.update(_collect_ids(result))
+                _collect_refs(result, citation_refs)
                 if name == "search_laws":
                     search_payloads.append(result)
                 tool_content = json.dumps(result, ensure_ascii=False)
@@ -326,7 +411,11 @@ def run(
         if turn < settings.max_turns and search_payloads:
             # 确定性取证：模型拿不到第二次工具窗口，正文由代码补齐后并入下一轮上下文
             auto_entries, body = _collect_anchor_texts(
-                conf, search_payloads, max_chars=settings.max_tool_chars, dispatch=dispatch
+                conf,
+                search_payloads,
+                max_chars=settings.max_tool_chars,
+                dispatch=dispatch,
+                refs=citation_refs,
             )
             tool_trace.extend(auto_entries)
             if body:
@@ -352,6 +441,7 @@ def run(
         tool_trace,
         elapsed,
         quota,
+        citation_refs,
     )
 
 
@@ -376,6 +466,7 @@ def _result(
     tool_trace: list[dict],
     elapsed_ms: float,
     quota: Quota,
+    citation_refs: dict | None = None,
 ) -> dict:
     return {
         "answer": answer,
@@ -389,4 +480,5 @@ def _result(
         "stateless_mode": True,
         "elapsed_ms": elapsed_ms,
         "quota": quota.snapshot(),
+        "citation_refs": citation_refs or {},
     }

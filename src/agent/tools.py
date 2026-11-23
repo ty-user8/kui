@@ -166,6 +166,22 @@ def get_anchor_text(conf, args: schema.GetAnchorTextArgs) -> dict:
     }
 
 
+def describe_chunks(conf, chunk_ids) -> dict[str, dict]:
+    """按 `chunk_id` 取「标题 + 条号」，不读正文：给展示层把引用写成《法规名》第X条用。"""
+    index = service.load_chunk_index(conf)
+    titles = _doc_titles(conf)
+    out: dict[str, dict] = {}
+    for chunk_id in chunk_ids:
+        meta = index.get(chunk_id)
+        if not meta:
+            continue
+        out[chunk_id] = {
+            "title": meta.get("title") or titles.get(meta.get("doc_id") or "", ""),
+            "article_no": meta.get("article_no"),
+        }
+    return out
+
+
 def get_stats(conf, args: schema.GetStatsArgs) -> dict:
     """语料与索引规模；纯本地计算，0 次模型调用。"""
     conn = connect(conf.require_db_path())
